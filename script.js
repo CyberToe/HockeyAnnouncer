@@ -17,8 +17,8 @@ class HockeyGoalAnnouncer {
         this.goals = [];
         this.speechSynthesis = window.speechSynthesis;
         this.currentVoice = null;
-        this.speechRate = 1.0;
-        this.speechPitch = 1.0;
+        this.speechRate = 0.9; // Slightly slower for more dramatic effect
+        this.speechPitch = 0.8; // Lower pitch for more authoritative sound
         
         this.init();
     }
@@ -49,8 +49,25 @@ class HockeyGoalAnnouncer {
         });
 
         document.getElementById('voiceSelect').addEventListener('change', (e) => {
-            this.currentVoice = e.target.value === 'default' ? null : 
-                this.speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
+            if (e.target.value === 'default') {
+                this.currentVoice = null;
+            } else if (e.target.value === 'recommended') {
+                // Find the first available announcer-style voice
+                const voices = this.speechSynthesis.getVoices();
+                const announcerVoices = [
+                    'Alex', 'Daniel', 'Tom', 'Mark', 'David', 'James', 'John',
+                    'Microsoft David Desktop', 'Microsoft Mark Desktop', 'Microsoft David',
+                    'Google UK English Male', 'Google US English Male'
+                ];
+                
+                this.currentVoice = voices.find(voice => 
+                    announcerVoices.some(name => 
+                        voice.name.toLowerCase().includes(name.toLowerCase())
+                    )
+                ) || null;
+            } else {
+                this.currentVoice = this.speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
+            }
         });
 
         // Update team names when changed
@@ -80,16 +97,82 @@ class HockeyGoalAnnouncer {
         // Wait for voices to load
         const loadVoices = () => {
             const voices = this.speechSynthesis.getVoices();
-            voiceSelect.innerHTML = '<option value="default">Default Voice</option>';
+            voiceSelect.innerHTML = '';
             
+            // Prioritized list of announcer-style voices (more exciting/deep voices)
+            const announcerVoices = [
+                'Alex', 'Daniel', 'Tom', 'Mark', 'David', 'James', 'John',
+                'Microsoft David Desktop', 'Microsoft Mark Desktop', 'Microsoft David',
+                'Google UK English Male', 'Google US English Male',
+                'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa'
+            ];
+            
+            // Add recommended announcer voices first
+            const recommendedOption = document.createElement('option');
+            recommendedOption.value = 'recommended';
+            recommendedOption.textContent = '🎤 Recommended Announcer Voice';
+            voiceSelect.appendChild(recommendedOption);
+            
+            // Add default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = 'default';
+            defaultOption.textContent = 'Default Voice';
+            voiceSelect.appendChild(defaultOption);
+            
+            // Add separator
+            const separatorOption = document.createElement('option');
+            separatorOption.disabled = true;
+            separatorOption.textContent = '───────────────';
+            voiceSelect.appendChild(separatorOption);
+            
+            // Add announcer-style voices
+            const announcerVoicesFound = [];
             voices.forEach(voice => {
                 if (voice.lang.startsWith('en')) {
-                    const option = document.createElement('option');
-                    option.value = voice.name;
-                    option.textContent = `${voice.name} (${voice.lang})`;
-                    voiceSelect.appendChild(option);
+                    const isAnnouncerVoice = announcerVoices.some(name => 
+                        voice.name.toLowerCase().includes(name.toLowerCase())
+                    );
+                    
+                    if (isAnnouncerVoice) {
+                        announcerVoicesFound.push(voice);
+                    }
                 }
             });
+            
+            // Add found announcer voices
+            announcerVoicesFound.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `🎤 ${voice.name} (${voice.lang})`;
+                voiceSelect.appendChild(option);
+            });
+            
+            // Add separator if we have announcer voices
+            if (announcerVoicesFound.length > 0) {
+                const separatorOption2 = document.createElement('option');
+                separatorOption2.disabled = true;
+                separatorOption2.textContent = '───────────────';
+                voiceSelect.appendChild(separatorOption2);
+            }
+            
+            // Add other English voices
+            voices.forEach(voice => {
+                if (voice.lang.startsWith('en')) {
+                    const isAlreadyAdded = announcerVoicesFound.some(v => v.name === voice.name);
+                    if (!isAlreadyAdded) {
+                        const option = document.createElement('option');
+                        option.value = voice.name;
+                        option.textContent = `${voice.name} (${voice.lang})`;
+                        voiceSelect.appendChild(option);
+                    }
+                }
+            });
+            
+            // Set recommended voice as default
+            if (announcerVoicesFound.length > 0) {
+                this.currentVoice = announcerVoicesFound[0];
+                voiceSelect.value = announcerVoicesFound[0].name;
+            }
         };
 
         if (this.speechSynthesis.getVoices().length === 0) {
@@ -261,7 +344,7 @@ class HockeyGoalAnnouncer {
                           goal.period === '2' ? 'second period' :
                           'third period';
 
-        let announcement = `Goal! by number ${goal.scorer.number}, ${goal.scorer.name}`;
+        let announcement = `Goal for the ${goal.teamName}! by number ${goal.scorer.number}, ${goal.scorer.name}`;
 
         if (goal.assist1 && goal.assist2) {
             announcement += `, assisted by number ${goal.assist1.number}, ${goal.assist1.name} and number ${goal.assist2.number}, ${goal.assist2.name}`;
@@ -309,7 +392,7 @@ class HockeyGoalAnnouncer {
     }
 
     testVoice() {
-        const testMessage = "Goal! by number 19, Sarah Johnson, assisted by number 9, Emily Carter, in the second period with 4:25 remaining.";
+        const testMessage = "Goal for the Valkyries! by number 19, Sarah Johnson, assisted by number 9, Emily Carter, in the second period with 4:25 remaining.";
         
         if (this.speechSynthesis.speaking) {
             this.speechSynthesis.cancel();
