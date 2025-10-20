@@ -136,7 +136,25 @@
                 <span id="pitchValue">0.8</span>
             </div>
             <div class="settings-row">
+                <label for="speechVolume">Speech Volume:</label>
+                <input type="range" id="speechVolume" min="0.5" max="1" step="0.1" value="1">
+                <span id="volumeValue">1.0</span>
+            </div>
+            <div class="settings-row">
+                <label>
+                    <input type="checkbox" id="enhancedMode" checked> Enhanced Announcer Mode
+                </label>
+            </div>
+            <div class="settings-row">
                 <button onclick="testVoice()" class="btn btn-secondary">Test Voice</button>
+                <button onclick="testMultipleVoices()" class="btn btn-secondary">Try All Voices</button>
+                <button onclick="debugVoices()" class="btn btn-secondary">Debug Voices</button>
+            </div>
+            <div class="settings-row">
+                <small style="color: #666; font-style: italic;">
+                    Note: Voice options may be limited on hosting platforms like Vercel. 
+                    For best results, try different browsers or test locally.
+                </small>
             </div>
         </section>
     </div>

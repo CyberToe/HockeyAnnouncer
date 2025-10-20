@@ -19,6 +19,8 @@ class HockeyGoalAnnouncer {
         this.currentVoice = null;
         this.speechRate = 0.9; // Slightly slower for more dramatic effect
         this.speechPitch = 0.8; // Lower pitch for more authoritative sound
+        this.speechVolume = 1.0; // Full volume
+        this.enhancedMode = true; // Enhanced announcer mode
         
         this.init();
     }
@@ -48,26 +50,42 @@ class HockeyGoalAnnouncer {
             document.getElementById('pitchValue').textContent = this.speechPitch.toFixed(1);
         });
 
+        document.getElementById('speechVolume').addEventListener('input', (e) => {
+            this.speechVolume = parseFloat(e.target.value);
+            document.getElementById('volumeValue').textContent = this.speechVolume.toFixed(1);
+        });
+
+        document.getElementById('enhancedMode').addEventListener('change', (e) => {
+            this.enhancedMode = e.target.checked;
+        });
+
         document.getElementById('voiceSelect').addEventListener('change', (e) => {
+            console.log('Voice selection changed to:', e.target.value);
+            
             if (e.target.value === 'default') {
                 this.currentVoice = null;
+                console.log('Using default voice');
             } else if (e.target.value === 'recommended') {
-                // Find the first available announcer-style voice
+                // Find the first available male voice (usually better for announcing)
                 const voices = this.speechSynthesis.getVoices();
-                const announcerVoices = [
-                    'Alex', 'Daniel', 'Tom', 'Mark', 'David', 'James', 'John',
-                    'Microsoft David Desktop', 'Microsoft Mark Desktop', 'Microsoft David',
-                    'Google UK English Male', 'Google US English Male'
-                ];
+                const maleVoices = voices.filter(voice => 
+                    voice.lang.startsWith('en') && 
+                    (voice.gender === 'male' || 
+                     voice.name.toLowerCase().includes('male') ||
+                     voice.name.toLowerCase().includes('david') ||
+                     voice.name.toLowerCase().includes('alex') ||
+                     voice.name.toLowerCase().includes('daniel'))
+                );
                 
-                this.currentVoice = voices.find(voice => 
-                    announcerVoices.some(name => 
-                        voice.name.toLowerCase().includes(name.toLowerCase())
-                    )
-                ) || null;
+                this.currentVoice = maleVoices.length > 0 ? maleVoices[0] : voices[0] || null;
+                console.log('Using recommended voice:', this.currentVoice?.name);
             } else {
                 this.currentVoice = this.speechSynthesis.getVoices().find(voice => voice.name === e.target.value);
+                console.log('Using selected voice:', this.currentVoice?.name || 'not found');
             }
+            
+            // Test the voice immediately
+            this.testCurrentVoice();
         });
 
         // Update team names when changed
@@ -97,15 +115,8 @@ class HockeyGoalAnnouncer {
         // Wait for voices to load
         const loadVoices = () => {
             const voices = this.speechSynthesis.getVoices();
+            console.log('Available voices:', voices.map(v => v.name));
             voiceSelect.innerHTML = '';
-            
-            // Prioritized list of announcer-style voices (more exciting/deep voices)
-            const announcerVoices = [
-                'Alex', 'Daniel', 'Tom', 'Mark', 'David', 'James', 'John',
-                'Microsoft David Desktop', 'Microsoft Mark Desktop', 'Microsoft David',
-                'Google UK English Male', 'Google US English Male',
-                'Samantha', 'Victoria', 'Karen', 'Moira', 'Tessa'
-            ];
             
             // Add recommended announcer voices first
             const recommendedOption = document.createElement('option');
@@ -123,63 +134,49 @@ class HockeyGoalAnnouncer {
             const separatorOption = document.createElement('option');
             separatorOption.disabled = true;
             separatorOption.textContent = '───────────────';
+            separatorOption.textContent = 'Available Voices';
             voiceSelect.appendChild(separatorOption);
             
-            // Add announcer-style voices
-            const announcerVoicesFound = [];
-            voices.forEach(voice => {
-                if (voice.lang.startsWith('en')) {
-                    const isAnnouncerVoice = announcerVoices.some(name => 
-                        voice.name.toLowerCase().includes(name.toLowerCase())
-                    );
-                    
-                    if (isAnnouncerVoice) {
-                        announcerVoicesFound.push(voice);
-                    }
-                }
-            });
+            // Add all available voices with detailed info
+            const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
             
-            // Add found announcer voices
-            announcerVoicesFound.forEach(voice => {
-                const option = document.createElement('option');
-                option.value = voice.name;
-                option.textContent = `🎤 ${voice.name} (${voice.lang})`;
-                voiceSelect.appendChild(option);
-            });
-            
-            // Add separator if we have announcer voices
-            if (announcerVoicesFound.length > 0) {
-                const separatorOption2 = document.createElement('option');
-                separatorOption2.disabled = true;
-                separatorOption2.textContent = '───────────────';
-                voiceSelect.appendChild(separatorOption2);
+            if (englishVoices.length === 0) {
+                const noVoicesOption = document.createElement('option');
+                noVoicesOption.disabled = true;
+                noVoicesOption.textContent = 'No voices available - using default';
+                voiceSelect.appendChild(noVoicesOption);
+            } else {
+                englishVoices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = voice.name;
+                    option.textContent = `${voice.name} (${voice.lang}) - ${voice.gender || 'Unknown'}`;
+                    voiceSelect.appendChild(option);
+                });
+                
+                // Auto-select first available voice
+                this.currentVoice = englishVoices[0];
+                voiceSelect.value = englishVoices[0].name;
             }
             
-            // Add other English voices
-            voices.forEach(voice => {
-                if (voice.lang.startsWith('en')) {
-                    const isAlreadyAdded = announcerVoicesFound.some(v => v.name === voice.name);
-                    if (!isAlreadyAdded) {
-                        const option = document.createElement('option');
-                        option.value = voice.name;
-                        option.textContent = `${voice.name} (${voice.lang})`;
-                        voiceSelect.appendChild(option);
-                    }
+            // Add debug info
+            console.log('Selected voice:', this.currentVoice?.name || 'default');
+        };
+
+        // Force voice loading with multiple attempts
+        const attemptLoadVoices = (attempts = 0) => {
+            if (attempts < 5) {
+                const voices = this.speechSynthesis.getVoices();
+                if (voices.length === 0) {
+                    setTimeout(() => attemptLoadVoices(attempts + 1), 500);
+                } else {
+                    loadVoices();
                 }
-            });
-            
-            // Set recommended voice as default
-            if (announcerVoicesFound.length > 0) {
-                this.currentVoice = announcerVoicesFound[0];
-                voiceSelect.value = announcerVoicesFound[0].name;
+            } else {
+                loadVoices(); // Load with empty voices if still none found
             }
         };
 
-        if (this.speechSynthesis.getVoices().length === 0) {
-            this.speechSynthesis.addEventListener('voiceschanged', loadVoices);
-        } else {
-            loadVoices();
-        }
+        attemptLoadVoices();
     }
 
     loadSampleData() {
@@ -364,7 +361,10 @@ class HockeyGoalAnnouncer {
             this.speechSynthesis.cancel();
         }
 
-        const utterance = new SpeechSynthesisUtterance(goal.announcement);
+        // Create a more exciting announcement with pauses and emphasis
+        const enhancedAnnouncement = this.createEnhancedAnnouncement(goal.announcement);
+        
+        const utterance = new SpeechSynthesisUtterance(enhancedAnnouncement);
         
         if (this.currentVoice) {
             utterance.voice = this.currentVoice;
@@ -372,7 +372,7 @@ class HockeyGoalAnnouncer {
         
         utterance.rate = this.speechRate;
         utterance.pitch = this.speechPitch;
-        utterance.volume = 1.0;
+        utterance.volume = this.speechVolume;
 
         // Add error handling
         utterance.onerror = (event) => {
@@ -381,7 +381,7 @@ class HockeyGoalAnnouncer {
         };
 
         utterance.onstart = () => {
-            console.log('Announcement started:', goal.announcement);
+            console.log('Announcement started:', enhancedAnnouncement);
         };
 
         utterance.onend = () => {
@@ -389,6 +389,28 @@ class HockeyGoalAnnouncer {
         };
 
         this.speechSynthesis.speak(utterance);
+    }
+
+    createEnhancedAnnouncement(announcement) {
+        if (!this.enhancedMode) {
+            return announcement;
+        }
+        
+        // Add excitement and natural pauses to make it sound less robotic
+        let enhanced = announcement;
+        
+        // Add emphasis to "Goal!" and make it more dramatic
+        enhanced = enhanced.replace(/Goal for the ([^!]+)!/, 'GOAL FOR THE $1!');
+        
+        // Add dramatic pauses with periods for better rhythm
+        enhanced = enhanced.replace(/by number (\d+), ([^,]+)/, 'by number $1, $2');
+        enhanced = enhanced.replace(/assisted by number (\d+), ([^,]+)/, 'assisted by number $1, $2');
+        enhanced = enhanced.replace(/in the ([^,]+)/, 'in the $1');
+        
+        // Make it sound more like a real announcer
+        enhanced = enhanced.replace(/with (\d+:\d+) remaining/, 'with $1 remaining!');
+        
+        return enhanced;
     }
 
     testVoice() {
@@ -406,7 +428,7 @@ class HockeyGoalAnnouncer {
         
         utterance.rate = this.speechRate;
         utterance.pitch = this.speechPitch;
-        utterance.volume = 1.0;
+        utterance.volume = this.speechVolume;
 
         utterance.onerror = (event) => {
             console.error('Test speech synthesis error:', event);
@@ -422,6 +444,109 @@ class HockeyGoalAnnouncer {
         };
 
         this.speechSynthesis.speak(utterance);
+    }
+
+    testCurrentVoice() {
+        const testMessage = "Testing voice selection.";
+        
+        if (this.speechSynthesis.speaking) {
+            this.speechSynthesis.cancel();
+        }
+
+        const utterance = new SpeechSynthesisUtterance(testMessage);
+        
+        if (this.currentVoice) {
+            utterance.voice = this.currentVoice;
+        }
+        
+        utterance.rate = this.speechRate;
+        utterance.pitch = this.speechPitch;
+        utterance.volume = this.speechVolume;
+
+        utterance.onstart = () => {
+            console.log('Voice test started with:', this.currentVoice?.name || 'default');
+        };
+
+        utterance.onend = () => {
+            console.log('Voice test completed');
+        };
+
+        utterance.onerror = (event) => {
+            console.error('Voice test error:', event);
+        };
+
+        this.speechSynthesis.speak(utterance);
+    }
+
+    testMultipleVoices() {
+        const voices = this.speechSynthesis.getVoices().filter(voice => voice.lang.startsWith('en'));
+        let currentIndex = 0;
+        
+        const testMessage = "Goal for the Valkyries! by number 19, Sarah Johnson, assisted by number 9, Emily Carter, in the second period with 4:25 remaining.";
+        
+        const playNextVoice = () => {
+            if (currentIndex < voices.length) {
+                const voice = voices[currentIndex];
+                console.log(`Testing voice: ${voice.name}`);
+                
+                if (this.speechSynthesis.speaking) {
+                    this.speechSynthesis.cancel();
+                }
+
+                const utterance = new SpeechSynthesisUtterance(testMessage);
+                utterance.voice = voice;
+                utterance.rate = this.speechRate;
+                utterance.pitch = this.speechPitch;
+                utterance.volume = this.speechVolume;
+
+                utterance.onend = () => {
+                    console.log(`Finished testing: ${voice.name}`);
+                    currentIndex++;
+                    // Wait 1 second between voices
+                    setTimeout(playNextVoice, 1000);
+                };
+
+                utterance.onerror = (event) => {
+                    console.error(`Error with voice ${voice.name}:`, event);
+                    currentIndex++;
+                    setTimeout(playNextVoice, 1000);
+                };
+
+                this.speechSynthesis.speak(utterance);
+            } else {
+                console.log('Finished testing all voices');
+                alert('Voice testing complete! Check the console for details about each voice.');
+            }
+        };
+
+        alert(`Starting to test ${voices.length} English voices. Check the console for details.`);
+        playNextVoice();
+    }
+
+    debugVoices() {
+        const voices = this.speechSynthesis.getVoices();
+        console.log('=== VOICE DEBUG INFO ===');
+        console.log('Total voices available:', voices.length);
+        console.log('Current selected voice:', this.currentVoice?.name || 'default');
+        console.log('Speech synthesis supported:', !!this.speechSynthesis);
+        console.log('Browser:', navigator.userAgent);
+        
+        console.log('\n=== ALL AVAILABLE VOICES ===');
+        voices.forEach((voice, index) => {
+            console.log(`${index + 1}. ${voice.name}`);
+            console.log(`   Language: ${voice.lang}`);
+            console.log(`   Gender: ${voice.gender || 'Unknown'}`);
+            console.log(`   Local Service: ${voice.localService || 'Unknown'}`);
+            console.log(`   Default: ${voice.default || false}`);
+        });
+        
+        const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+        console.log('\n=== ENGLISH VOICES ===');
+        englishVoices.forEach((voice, index) => {
+            console.log(`${index + 1}. ${voice.name} (${voice.gender || 'Unknown'})`);
+        });
+        
+        alert(`Voice debug info logged to console. Found ${voices.length} total voices, ${englishVoices.length} English voices.`);
     }
 
     renderGoalLog() {
@@ -579,6 +704,14 @@ function clearAllData() {
 
 function testVoice() {
     app.testVoice();
+}
+
+function testMultipleVoices() {
+    app.testMultipleVoices();
+}
+
+function debugVoices() {
+    app.debugVoices();
 }
 
 // Initialize the application
