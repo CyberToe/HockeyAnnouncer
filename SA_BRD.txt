@@ -1,0 +1,171 @@
+BUSINESS REQUIREMENTS DOCUMENT
+Project Title: Hockey Goal Announcer
+Version: 1.0
+Date: October 20, 2025
+1. Purpose
+
+The purpose of this application is to allow a user to load two hockey teams and their rosters, record goals during a game (including scorer, assists, period, and time), and have the app automatically vocalize a goal announcement such as:
+
+“Goal! by number 19, Sarah Johnson, assisted by number 9, Emily Carter, in the second period with 4:25 remaining.”
+
+2. Key Features
+2.1 Team Setup
+
+The user can create or load two teams (Home and Away).
+
+Each team has:
+
+Team Name
+
+Team Color (optional)
+
+List of Players (Name and Jersey Number)
+
+2.2 Player Management
+
+Add, edit, or delete players from a team.
+
+Each player record includes:
+
+Player Name (string)
+
+Jersey Number (integer)
+
+2.3 Goal Recording
+
+When a goal occurs:
+
+User selects:
+
+Scoring Team (Home or Away)
+
+Scoring Player
+
+Assist 1 (optional)
+
+Assist 2 (optional)
+
+Period Number (1, 2, 3, or OT)
+
+Time Remaining (MM:SS format)
+
+User clicks a “Record Goal” button.
+
+2.4 Goal Announcement (Vocalization)
+
+When a goal is recorded, the app generates an audio announcement.
+
+Example message:
+
+“Goal! by number 19, Sarah Johnson, assisted by number 9, Emily Carter, in the second period with 4:25 remaining.”
+
+If there is only one assist, the sentence adjusts automatically.
+
+If there are no assists, it says:
+
+“Goal! by number 19, Sarah Johnson, unassisted, in the second period with 4:25 remaining.”
+
+2.5 Goal Log
+
+A simple table or list showing all recorded goals:
+
+Time of goal
+
+Scoring team and player
+
+Assists
+
+Period
+
+User can delete or edit a recorded goal.
+
+2.6 Game Data Persistence
+
+Allow saving and reloading of team rosters and recorded goals.
+
+Store locally (browser local storage) or through simple file export/import (JSON or CSV).
+
+2.7 UI / UX Requirements
+
+Intuitive mobile-friendly interface.
+
+Simple layout:
+
+Top section: Load/Create Teams
+
+Middle section: Record Goal (dropdowns for players, period, etc.)
+
+Bottom section: Goal Log with playback buttons for announcements.
+
+Buttons:
+
+“Record Goal”
+
+“Play Announcement”
+
+“Save Game”
+
+“Load Game”
+
+2.8 Audio Engine
+
+Use a text-to-speech API or browser native speech synthesis (e.g., window.speechSynthesis) for the announcement.
+
+Voice should be clear and enthusiastic (preferably English male or female announcer voice).
+
+3. Non-Functional Requirements
+
+Platform: Web app (HTML, CSS, JavaScript / React)
+
+Speech Engine: Browser-based (no external API required)
+
+Storage: Local storage or downloadable JSON file
+
+Performance: Instant vocalization on goal entry
+
+Offline Use: Should function without internet after load
+
+4. Example User Flow
+
+User opens app.
+
+Enters or loads two teams:
+
+Team A: Valkyries
+
+Team B: Rockets
+
+Adds players for each team (Name + Number).
+
+When a goal happens:
+
+Select “Team A”
+
+Select “#19 Sarah Johnson” as scorer
+
+Select “#9 Emily Carter” as assist 1
+
+Enter period = 2, time = 4:25
+
+Tap “Record Goal”
+
+App says aloud:
+“Goal! by number 19, Sarah Johnson, assisted by number 9, Emily Carter, in the second period with 4:25 remaining.”
+
+Goal appears in the goal log.
+
+5. Future Enhancements (Optional)
+
+Allow custom voice settings (pitch, rate, tone)
+
+Allow background crowd sound effect
+
+Export game summary as PDF or CSV
+
+Multi-language support (English/French)
+
+Integrate timer and scoreboard
+
+6. Data Model
+
+Team Object

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hockey Goal Announcer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏒 Hockey Goal Announcer</h1>
+        </header>
+
+        <!-- Team Setup Section -->
+        <section class="team-setup">
+            <h2>Team Setup</h2>
+            <div class="teams-container">
+                <div class="team-card home-team">
+                    <h3>Home Team</h3>
+                    <input type="text" id="homeTeamName" placeholder="Enter team name" value="Valkyries">
+                    <input type="color" id="homeTeamColor" value="#ff6b6b">
+                    <div class="players-section">
+                        <h4>Players</h4>
+                        <div class="add-player">
+                            <input type="text" id="homePlayerName" placeholder="Player name">
+                            <input type="number" id="homePlayerNumber" placeholder="Number" min="1" max="99">
+                            <button onclick="addPlayer('home')">Add Player</button>
+                        </div>
+                        <div id="homePlayersList" class="players-list"></div>
+                    </div>
+                </div>
+
+                <div class="team-card away-team">
+                    <h3>Away Team</h3>
+                    <input type="text" id="awayTeamName" placeholder="Enter team name" value="Rockets">
+                    <input type="color" id="awayTeamColor" value="#4ecdc4">
+                    <div class="players-section">
+                        <h4>Players</h4>
+                        <div class="add-player">
+                            <input type="text" id="awayPlayerName" placeholder="Player name">
+                            <input type="number" id="awayPlayerNumber" placeholder="Number" min="1" max="99">
+                            <button onclick="addPlayer('away')">Add Player</button>
+                        </div>
+                        <div id="awayPlayersList" class="players-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="team-actions">
+                <button onclick="saveGameData()" class="btn btn-secondary">Save Game</button>
+                <button onclick="loadGameData()" class="btn btn-secondary">Load Game</button>
+                <button onclick="clearAllData()" class="btn btn-danger">Clear All</button>
+            </div>
+        </section>
+
+        <!-- Goal Recording Section -->
+        <section class="goal-recording">
+            <h2>Record Goal</h2>
+            <div class="goal-form">
+                <div class="form-row">
+                    <label for="scoringTeam">Scoring Team:</label>
+                    <select id="scoringTeam">
+                        <option value="home">Home Team</option>
+                        <option value="away">Away Team</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="scorer">Scorer:</label>
+                    <select id="scorer">
+                        <option value="">Select scorer</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="assist1">Assist 1 (Optional):</label>
+                    <select id="assist1">
+                        <option value="">No assist</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="assist2">Assist 2 (Optional):</label>
+                    <select id="assist2">
+                        <option value="">No assist</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="period">Period:</label>
+                    <select id="period">
+                        <option value="1">1st Period</option>
+                        <option value="2">2nd Period</option>
+                        <option value="3">3rd Period</option>
+                        <option value="ot">Overtime</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="timeRemaining">Time Remaining:</label>
+                    <input type="text" id="timeRemaining" placeholder="MM:SS" value="4:25">
+                </div>
+
+                <button onclick="recordGoal()" class="btn btn-primary" id="recordGoalBtn">Record Goal & Announce</button>
+            </div>
+        </section>
+
+        <!-- Goal Log Section -->
+        <section class="goal-log">
+            <h2>Goal Log</h2>
+            <div class="log-actions">
+                <button onclick="playAllAnnouncements()" class="btn btn-secondary">Play All</button>
+                <button onclick="clearGoalLog()" class="btn btn-danger">Clear Log</button>
+            </div>
+            <div id="goalLogList" class="goal-list"></div>
+        </section>
+
+        <!-- Voice Settings -->
+        <section class="voice-settings">
+            <h3>Voice Settings</h3>
+            <div class="settings-row">
+                <label for="voiceSelect">Voice:</label>
+                <select id="voiceSelect">
+                    <option value="default">Default Voice</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label for="speechRate">Speech Rate:</label>
+                <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1">
+                <span id="rateValue">1.0</span>
+            </div>
+            <div class="settings-row">
+                <label for="speechPitch">Speech Pitch:</label>
+                <input type="range" id="speechPitch" min="0" max="2" step="0.1" value="1">
+                <span id="pitchValue">1.0</span>
+            </div>
+            <div class="settings-row">
+                <button onclick="testVoice()" class="btn btn-secondary">Test Voice</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
