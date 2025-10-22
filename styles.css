@@ -286,14 +286,15 @@ section h4 {
 
 .goal-info {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    gap: 15px;
     margin-bottom: 15px;
+    flex-wrap: wrap;
 }
 
 .goal-info .goal-team {
-    align-self: flex-start;
-    margin-bottom: 8px;
+    margin-bottom: 0;
 }
 
 .goal-item:hover {
