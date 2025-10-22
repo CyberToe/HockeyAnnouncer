@@ -284,6 +284,18 @@ section h4 {
     transition: all 0.3s;
 }
 
+.goal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.goal-info .goal-team {
+    align-self: flex-start;
+    margin-bottom: 8px;
+}
+
 .goal-item:hover {
     background: #e9ecef;
     transform: translateY(-2px);
@@ -304,16 +316,41 @@ section h4 {
 }
 
 .goal-team {
-    padding: 5px 12px;
-    border-radius: 20px;
+    padding: 8px 16px;
+    border-radius: 25px;
     color: white;
-    font-weight: 500;
-    font-size: 0.9rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .goal-details {
     margin-bottom: 10px;
     color: #34495e;
+}
+
+.goal-scorer {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.goal-assist {
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+.goal-time {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.goal-timestamp {
+    color: #95a5a6;
+    font-size: 0.9rem;
 }
 
 .goal-announcement {

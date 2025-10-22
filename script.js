@@ -40,6 +40,17 @@ class HockeyGoalAnnouncer {
             this.saveGameData();
         });
 
+        // Update team names when changed
+        document.getElementById('homeTeamName').addEventListener('input', (e) => {
+            this.teams.home.name = e.target.value;
+            this.saveGameData();
+        });
+
+        document.getElementById('awayTeamName').addEventListener('input', (e) => {
+            this.teams.away.name = e.target.value;
+            this.saveGameData();
+        });
+
         // Update team colors when changed
         document.getElementById('homeTeamColor').addEventListener('change', (e) => {
             this.teams.home.color = e.target.value;
