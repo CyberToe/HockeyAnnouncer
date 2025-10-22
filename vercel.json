@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "api/tts.js": {
+      "maxDuration": 10
+    },
+    "api/google-tts.js": {
+      "maxDuration": 10
+    }
+  },
+  "env": {
+    "VOICERSS_API_KEY": "@voicerss_api_key",
+    "GOOGLE_CLOUD_CREDENTIALS": "@google_cloud_credentials"
+  }
+}
