@@ -220,6 +220,11 @@ class HockeyGoalAnnouncer {
     async useCloudTTSAnnouncement(announcement) {
         try {
             console.log('Using ElevenLabs TTS for announcement');
+            console.log('API Key present:', this.apiKey ? `${this.apiKey.substring(0, 10)}...${this.apiKey.substring(this.apiKey.length - 4)}` : 'MISSING');
+            
+            if (!this.apiKey || !this.apiKey.startsWith('sk_')) {
+                throw new Error('Invalid API key format. API key must start with "sk_"');
+            }
             
             const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + this.selectedVoice, {
                 method: 'POST',
@@ -256,11 +261,27 @@ class HockeyGoalAnnouncer {
                 
                 audio.play();
             } else {
-                throw new Error('ElevenLabs API service unavailable');
+                // Get detailed error information
+                const errorText = await response.text();
+                let errorMessage = `ElevenLabs API error (${response.status}): `;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage += errorJson.detail?.message || errorJson.detail || errorText;
+                } catch {
+                    errorMessage += errorText || 'Unknown error';
+                }
+                console.error('ElevenLabs API Error:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorText,
+                    apiKey: this.apiKey ? `${this.apiKey.substring(0, 10)}...` : 'MISSING'
+                });
+                throw new Error(errorMessage);
             }
         } catch (error) {
             console.error('ElevenLabs TTS error:', error);
-            alert('Error with voice announcement. Please check your internet connection and API key.');
+            const errorMsg = error.message || 'Unknown error';
+            alert(`Error with voice announcement: ${errorMsg}\n\nPlease check:\n- Your internet connection\n- Your ElevenLabs API key is valid\n- Your account has credits available`);
         }
     }
 
@@ -350,8 +371,8 @@ class HockeyGoalAnnouncer {
         const gameData = {
             teams: this.teams,
             goals: this.goals,
-            selectedVoice: this.selectedVoice,
-            apiKey: this.apiKey
+            selectedVoice: this.selectedVoice
+            // Note: API key is not saved to localStorage for security
         };
         
         localStorage.setItem('hockeyAnnouncerData', JSON.stringify(gameData));
@@ -365,7 +386,7 @@ class HockeyGoalAnnouncer {
                 this.teams = gameData.teams || this.teams;
                 this.goals = gameData.goals || [];
                 this.selectedVoice = gameData.selectedVoice || this.selectedVoice;
-                this.apiKey = gameData.apiKey || this.apiKey;
+                // Note: API key is not loaded from localStorage - it uses the one defined in the constructor
                 
                 // Update UI elements
                 document.getElementById('homeTeamName').value = this.teams.home.name;
