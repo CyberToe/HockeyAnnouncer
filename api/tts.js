@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'xi-api-key': process.env.ELEVENLABS_API_KEY || 'sk_7814e138ef3ee3a105196c9fa9690958aac786cc4332251b' // User's API key
+        'xi-api-key': process.env.ELEVENLABS_API_KEY || 'sk_11b0f83e527f39ff6a23020ae9b9246fee3dce41003c7140' // User's API key
       },
       body: JSON.stringify({
         text: text,

@@ -15,7 +15,7 @@ class HockeyGoalAnnouncer {
         };
         
         this.goals = [];
-        this.apiKey = 'sk_7814e138ef3ee3a105196c9fa9690958aac786cc4332251b'; // ElevenLabs API key
+        this.apiKey = 'sk_11b0f83e527f39ff6a23020ae9b9246fee3dce41003c7140'; // ElevenLabs API key
         this.selectedVoice = 'ErXwobaYiN019PkySvjV'; // Antoni (Male, American) - good for sports announcing
         
         this.init();
