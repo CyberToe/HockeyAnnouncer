@@ -129,9 +129,11 @@ async function saveAttendingPlayers() {
         const checkboxes = document.querySelectorAll('#attendingPlayersCheckboxes input[type="checkbox"]:checked');
         const attendingPlayerIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
-        const response = await apiCall(`/games/${gameId}/attending-players`, {
-            method: 'PUT',
+        // Use POST with _action workaround since routes with IDs have routing issues
+        const response = await apiCall(`/games/${gameId}`, {
+            method: 'POST',
             body: JSON.stringify({
+                _action: 'update-attending-players',
                 attending_home_player_ids: attendingPlayerIds
             })
         });

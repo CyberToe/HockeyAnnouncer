@@ -615,10 +615,13 @@ module.exports = async function handler(req, res) {
                         game.goals = goalsResult.rows;
 
                         return res.json(game);
-                    } else if (method === 'PUT' && parts.length === 3 && parts[2] === 'attending-players') {
-                        // Update attending players: PUT /api/v2/games/:id/attending-players
+                    } else if (method === 'POST' && req.body && req.body._action === 'update-attending-players') {
+                        // Update attending players: POST /api/v2/games/:id with _action=update-attending-players
                         const userId = req.user.userId;
                         const { attending_home_player_ids } = req.body || {};
+                        
+                        // Remove _action from body
+                        delete req.body._action;
 
                         // Verify game belongs to user
                         const gameResult = await query(
