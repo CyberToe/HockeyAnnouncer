@@ -9,6 +9,9 @@
     "api/auth/login.js": {
       "maxDuration": 30
     },
+    "api/v2/[...].js": {
+      "maxDuration": 30
+    },
     "api/[...].js": {
       "maxDuration": 30
     }
