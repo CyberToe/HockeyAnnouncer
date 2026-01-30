@@ -276,11 +276,13 @@ module.exports = async function handler(req, res) {
             // Route: /api/v2/away-teams/:id
             if (route.startsWith('away-teams/')) {
                 const parts = route.split('/').filter(p => p); // Filter out empty strings
-                console.log('Away-teams route matched:', { route, parts, partsLength: parts.length, method });
+                console.log('Away-teams route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
                 
-                if (parts.length === 2) {
+                if (parts.length === 2 && parts[0] === 'away-teams') {
                     // away-teams/:id (PUT or DELETE)
                     const teamId = parts[1];
+                    
+                    console.log('Processing away-teams/:id route:', { teamId, method, route, parts });
                     
                     if (method === 'PUT') {
                         const userId = req.user.userId;
