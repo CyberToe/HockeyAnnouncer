@@ -498,6 +498,46 @@ module.exports = async function handler(req, res) {
             
             // Route: /api/v2/games
             if (route === 'games') {
+                // Handle POST with _action='get' to get a single game (workaround for routing issues)
+                if (method === 'POST' && req.body && req.body._action === 'get' && req.body.id) {
+                    const gameId = req.body.id;
+                    const userId = req.user.userId;
+                    console.log('Getting game via POST workaround:', { gameId, userId });
+
+                    const gameResult = await query(
+                        `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
+                         FROM games g
+                         JOIN away_teams at ON g.away_team_id = at.id
+                         WHERE g.id = $1 AND g.user_id = $2`,
+                        [parseInt(gameId), userId]
+                    );
+
+                    if (gameResult.rows.length === 0) {
+                        return res.status(404).json({ error: 'Game not found' });
+                    }
+
+                    const game = gameResult.rows[0];
+
+                    // Get attending home players
+                    const playersResult = await query(
+                        `SELECT htp.* FROM game_home_players ghp
+                         JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                         WHERE ghp.game_id = $1
+                         ORDER BY htp.player_number`,
+                        [parseInt(gameId)]
+                    );
+                    game.attending_home_players = playersResult.rows;
+
+                    // Get goals
+                    const goalsResult = await query(
+                        'SELECT * FROM goals WHERE game_id = $1 ORDER BY created_at',
+                        [parseInt(gameId)]
+                    );
+                    game.goals = goalsResult.rows;
+
+                    return res.json(game);
+                }
+                
                 if (method === 'GET') {
                     // Get all games
                     const userId = req.user.userId;
