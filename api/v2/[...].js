@@ -12,13 +12,13 @@ function authenticateToken(req, res, next) {
         return res.status(401).json({ error: 'Access token required' });
     }
 
-    jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production', (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid or expired token' });
-        }
-        req.user = user;
+    try {
+        const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
+        req.user = decoded;
         next();
-    });
+    } catch (err) {
+        return res.status(403).json({ error: 'Invalid or expired token' });
+    }
 }
 
 // Extract the route from the URL
