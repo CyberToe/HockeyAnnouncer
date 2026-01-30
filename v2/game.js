@@ -46,16 +46,36 @@ function logout() {
 // Load game data
 async function loadGame() {
     try {
+        console.log('Loading game with ID:', gameId);
         const response = await apiCall(`/games/${gameId}`);
-        if (!response) return;
+        console.log('Game response:', {
+            ok: response?.ok,
+            status: response?.status,
+            statusText: response?.statusText
+        });
+        
+        if (!response) {
+            console.error('No response from apiCall');
+            showMessage('gameMessage', 'Error loading game: No response', 'error');
+            return;
+        }
 
         if (!response.ok) {
-            const error = await response.json();
-            showMessage(error.error || 'Error loading game', 'error');
+            let errorMessage = 'Error loading game';
+            try {
+                const error = await response.json();
+                errorMessage = error.error || errorMessage;
+                console.error('Game load error:', error);
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                console.error('Game load error (non-JSON):', errorMessage);
+            }
+            showMessage('gameMessage', errorMessage, 'error');
             return;
         }
 
         currentGame = await response.json();
+        console.log('Game loaded successfully:', currentGame);
 
         // Load home team
         const homeTeamResponse = await apiCall('/home-team');
@@ -87,8 +107,13 @@ async function loadGame() {
         renderGoals();
     } catch (error) {
         console.error('Load game error:', error);
-        showMessage('Error loading game', 'error');
+        showMessage('gameMessage', `Error loading game: ${error.message}`, 'error');
     }
+}
+
+// Initialize on page load
+if (gameId) {
+    loadGame();
 }
 
 // Tab switching
@@ -155,7 +180,11 @@ async function saveAttendingPlayers() {
 
 function showMessage(elementId, message, type) {
     const element = document.getElementById(elementId);
-    if (!element) return;
+    if (!element) {
+        // Fallback if element doesn't exist
+        console.error(`Element ${elementId} not found for message:`, message);
+        return;
+    }
     
     element.className = type === 'error' ? 'error-message' : 'success-message';
     element.textContent = message;
@@ -247,7 +276,7 @@ async function recordGoal(event) {
         const timeRemaining = document.getElementById('timeRemaining').value;
 
         if (!scorerData) {
-            showMessage('Please select a scorer', 'error');
+            showMessage('gameMessage', 'Please select a scorer', 'error');
             return;
         }
 
@@ -323,7 +352,7 @@ async function recordGoal(event) {
         if (!response) return;
 
         if (response.ok) {
-            showMessage('Goal recorded successfully!', 'success');
+            showMessage('gameMessage', 'Goal recorded successfully!', 'success');
             // Reset form
             document.getElementById('scorer').value = '';
             document.getElementById('assist1').value = '';
@@ -333,11 +362,11 @@ async function recordGoal(event) {
             await loadGame();
         } else {
             const error = await response.json();
-            showMessage(error.error || 'Error recording goal', 'error');
+            showMessage('gameMessage', error.error || 'Error recording goal', 'error');
         }
     } catch (error) {
         console.error('Record goal error:', error);
-        showMessage('Error recording goal', 'error');
+        showMessage('gameMessage', 'Error recording goal', 'error');
     }
 }
 
@@ -352,15 +381,15 @@ async function deleteGoal(goalId) {
         if (!response) return;
 
         if (response.ok) {
-            showMessage('Goal deleted successfully!', 'success');
+            showMessage('gameMessage', 'Goal deleted successfully!', 'success');
             await loadGame();
         } else {
             const error = await response.json();
-            showMessage(error.error || 'Error deleting goal', 'error');
+            showMessage('gameMessage', error.error || 'Error deleting goal', 'error');
         }
     } catch (error) {
         console.error('Delete goal error:', error);
-        showMessage('Error deleting goal', 'error');
+        showMessage('gameMessage', 'Error deleting goal', 'error');
     }
 }
 
@@ -393,7 +422,7 @@ async function playAnnouncement(announcementText) {
             
             audio.play();
         } else {
-            showMessage('Error generating announcement audio', 'error');
+            showMessage('gameMessage', 'Error generating announcement audio', 'error');
         }
     } catch (error) {
         console.error('Play announcement error:', error);
