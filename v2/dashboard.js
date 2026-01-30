@@ -225,10 +225,15 @@ async function createAwayTeam() {
         if (!response) return;
 
         if (response.ok) {
+            const newTeam = await response.json();
             document.getElementById('newAwayTeamName').value = '';
+            document.getElementById('newAwayTeamColor').value = '#4ecdc4';
             showMessage('awayTeamsMessage', 'Away team created successfully!', 'success');
             await loadAwayTeams();
             await loadGames(); // Refresh games dropdown
+            // Auto-select the newly created team
+            document.getElementById('awayTeamSelector').value = newTeam.id;
+            selectAwayTeam();
         } else {
             const error = await response.json();
             showMessage('awayTeamsMessage', error.error || 'Error creating away team', 'error');
