@@ -47,7 +47,13 @@ function logout() {
 async function loadGame() {
     try {
         console.log('Loading game with ID:', gameId);
-        const response = await apiCall(`/games/${gameId}`);
+        // Use POST with _action workaround since GET with IDs doesn't route correctly
+        const response = await apiCall(`/games/${gameId}`, {
+            method: 'POST',
+            body: JSON.stringify({
+                _action: 'get'
+            })
+        });
         console.log('Game response:', {
             ok: response?.ok,
             status: response?.status,
