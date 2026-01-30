@@ -99,63 +99,69 @@ module.exports = async function handler(req, res) {
     const rawUrl = req.url || '';
     const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
     const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
+    // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
+    // This handles cases where Vercel's catch-all routing might not work correctly
+    // Also handle POST with _method=PUT/DELETE workaround
+    const rawUrl = req.url || '';
+    const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
+    const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
     if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
         // Extract team ID from URL pattern: /api/v2/away-teams/123 or away-teams/123
-            const match = rawUrl.match(/away-teams\/(\d+)/);
-            if (match) {
-                const teamId = match[1];
-                const actualMethod = isPutWorkaround ? 'PUT' : (isDeleteWorkaround ? 'DELETE' : req.method);
-                console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrl, isPutWorkaround, isDeleteWorkaround });
+        const match = rawUrl.match(/away-teams\/(\d+)/);
+        if (match) {
+            const teamId = match[1];
+            const actualMethod = isPutWorkaround ? 'PUT' : (isDeleteWorkaround ? 'DELETE' : req.method);
+            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrl, isPutWorkaround, isDeleteWorkaround });
+            
+            // Authenticate first
+            const authHeader = req.headers['authorization'];
+            const token = authHeader && authHeader.split(' ')[1];
+            
+            if (!token) {
+                return res.status(401).json({ error: 'Access token required' });
+            }
+            
+            try {
+                const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
+                req.user = decoded;
                 
-                // Authenticate first
-                const authHeader = req.headers['authorization'];
-                const token = authHeader && authHeader.split(' ')[1];
-                
-                if (!token) {
-                    return res.status(401).json({ error: 'Access token required' });
+                // Remove _method from body if present
+                if (req.body && req.body._method) {
+                    delete req.body._method;
                 }
                 
-                try {
-                    const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
-                    req.user = decoded;
-                    
-                    // Remove _method from body if present
-                    if (req.body && req.body._method) {
-                        delete req.body._method;
+                if (actualMethod === 'PUT' || isPutWorkaround) {
+                    const userId = req.user.userId;
+                    const { team_name, team_color } = req.body || {};
+
+                    if (!team_name) {
+                        return res.status(400).json({ error: 'Team name is required' });
                     }
-                    
-                    if (actualMethod === 'PUT' || isPutWorkaround) {
-                        const userId = req.user.userId;
-                        const { team_name, team_color } = req.body || {};
 
-                        if (!team_name) {
-                            return res.status(400).json({ error: 'Team name is required' });
-                        }
+                    const result = await query(
+                        'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                        [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
+                    );
 
-                        const result = await query(
-                            'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-                            [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
-                        );
-
-                        if (result.rows.length === 0) {
-                            return res.status(404).json({ error: 'Away team not found' });
-                        }
-
-                        return res.json(result.rows[0]);
-                    } else if (actualMethod === 'DELETE' || isDeleteWorkaround) {
-                        const userId = req.user.userId;
-
-                        const result = await query(
-                            'DELETE FROM away_teams WHERE id = $1 AND user_id = $2 RETURNING id',
-                            [parseInt(teamId), userId]
-                        );
-
-                        if (result.rows.length === 0) {
-                            return res.status(404).json({ error: 'Away team not found' });
-                        }
-
-                        return res.json({ message: 'Away team deleted' });
+                    if (result.rows.length === 0) {
+                        return res.status(404).json({ error: 'Away team not found' });
                     }
+
+                    return res.json(result.rows[0]);
+                } else if (actualMethod === 'DELETE' || isDeleteWorkaround) {
+                    const userId = req.user.userId;
+
+                    const result = await query(
+                        'DELETE FROM away_teams WHERE id = $1 AND user_id = $2 RETURNING id',
+                        [parseInt(teamId), userId]
+                    );
+
+                    if (result.rows.length === 0) {
+                        return res.status(404).json({ error: 'Away team not found' });
+                    }
+
+                    return res.json({ message: 'Away team deleted' });
+                }
             } catch (err) {
                 if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
                     return res.status(403).json({ error: 'Invalid or expired token' });
@@ -165,17 +171,8 @@ module.exports = async function handler(req, res) {
         }
     }
     
-    // Log request for debugging
-    if (req.method === 'PUT' && req.url && req.url.includes('away-teams')) {
-        console.log('PUT away-teams request (after early handler):', {
-            url: req.url,
-            body: req.body,
-            bodyType: typeof req.body
-        });
-    }
-
-        // Authenticate (except for health checks)
-        authenticateToken(req, res, async () => {
+    // Authenticate (except for health checks)
+    authenticateToken(req, res, async () => {
             try {
                 const route = getRoute(req);
                 const method = req.method;
