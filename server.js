@@ -96,30 +96,35 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log('🏒 Hockey Goal Announcer Server');
-  console.log('================================');
-  console.log(`🚀 Server running at: http://localhost:${PORT}`);
-  console.log(`🎤 TTS API available at: http://localhost:${PORT}/api/tts`);
-  console.log(`❤️  Health check: http://localhost:${PORT}/api/health`);
-  console.log('');
-  console.log('📋 Available TTS modes:');
-  console.log('   • Browser TTS (Free, Limited Quality)');
-  console.log('   • Cloud TTS (Better Quality, Requires Internet)');
-  console.log('   • Vercel Serverless TTS (Professional Quality)');
-  console.log('   • Coqui TTS (Best Quality, Requires Local Server)');
-  console.log('');
-  console.log('💡 To test Coqui TTS:');
-  console.log('   1. Run: npm run setup-coqui');
-  console.log('   2. Run: npm run coqui');
-  console.log('   3. Select "Coqui TTS" mode in the app');
-  console.log('');
-  console.log('Press Ctrl+C to stop the server');
-});
+// Export app for Vercel serverless functions
+module.exports = app;
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n👋 Shutting down Hockey Goal Announcer server...');
-  process.exit(0);
-});
+// Only start server if not in Vercel environment
+if (require.main === module && !process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log('🏒 Hockey Goal Announcer Server');
+        console.log('================================');
+        console.log(`🚀 Server running at: http://localhost:${PORT}`);
+        console.log(`🎤 TTS API available at: http://localhost:${PORT}/api/tts`);
+        console.log(`❤️  Health check: http://localhost:${PORT}/api/health`);
+        console.log('');
+        console.log('📋 Available TTS modes:');
+        console.log('   • Browser TTS (Free, Limited Quality)');
+        console.log('   • Cloud TTS (Better Quality, Requires Internet)');
+        console.log('   • Vercel Serverless TTS (Professional Quality)');
+        console.log('   • Coqui TTS (Best Quality, Requires Local Server)');
+        console.log('');
+        console.log('💡 To test Coqui TTS:');
+        console.log('   1. Run: npm run setup-coqui');
+        console.log('   2. Run: npm run coqui');
+        console.log('   3. Select "Coqui TTS" mode in the app');
+        console.log('');
+        console.log('Press Ctrl+C to stop the server');
+    });
+
+    // Graceful shutdown
+    process.on('SIGINT', () => {
+        console.log('\n👋 Shutting down Hockey Goal Announcer server...');
+        process.exit(0);
+    });
+}
