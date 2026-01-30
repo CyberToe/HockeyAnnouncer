@@ -251,6 +251,8 @@ async function deleteAwayTeam(teamId) {
 
         if (response.ok) {
             showMessage('awayTeamsMessage', 'Away team deleted successfully!', 'success');
+            selectedAwayTeamId = null;
+            document.getElementById('selectedAwayTeamDetails').style.display = 'none';
             await loadAwayTeams();
             await loadGames();
         } else {
@@ -265,8 +267,8 @@ async function deleteAwayTeam(teamId) {
 
 async function addAwayTeamPlayer(teamId) {
     try {
-        const playerNameInput = document.getElementById(`awayPlayerName_${teamId}`);
-        const playerNumberInput = document.getElementById(`awayPlayerNumber_${teamId}`);
+        const playerNameInput = document.getElementById('selectedAwayPlayerName');
+        const playerNumberInput = document.getElementById('selectedAwayPlayerNumber');
         
         const playerName = playerNameInput.value.trim();
         const playerNumber = parseInt(playerNumberInput.value);
@@ -292,6 +294,9 @@ async function addAwayTeamPlayer(teamId) {
             playerNumberInput.value = '';
             showMessage('awayTeamsMessage', 'Player added successfully!', 'success');
             await loadAwayTeams();
+            // Re-select the team to refresh the view
+            document.getElementById('awayTeamSelector').value = teamId;
+            selectAwayTeam();
         } else {
             const error = await response.json();
             showMessage('awayTeamsMessage', error.error || 'Error adding player', 'error');
@@ -315,6 +320,11 @@ async function deleteAwayTeamPlayer(teamId, playerId) {
         if (response.ok) {
             showMessage('awayTeamsMessage', 'Player deleted successfully!', 'success');
             await loadAwayTeams();
+            // Re-select the team to refresh the view
+            if (selectedAwayTeamId) {
+                document.getElementById('awayTeamSelector').value = selectedAwayTeamId;
+                selectAwayTeam();
+            }
         } else {
             const error = await response.json();
             showMessage('awayTeamsMessage', error.error || 'Error deleting player', 'error');
@@ -325,43 +335,145 @@ async function deleteAwayTeamPlayer(teamId, playerId) {
     }
 }
 
+let selectedAwayTeamId = null;
+
 function renderAwayTeams() {
-    const list = document.getElementById('awayTeamsList');
+    const selector = document.getElementById('awayTeamSelector');
+    if (!selector) return;
+    
+    // Save current selection
+    const currentSelection = selector.value;
+    
+    selector.innerHTML = '<option value="">-- Select a team to view/edit --</option>';
+    
     if (awayTeams.length === 0) {
-        list.innerHTML = '<p style="color: #7f8c8d; text-align: center; padding: 20px;">No away teams created yet</p>';
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No away teams created yet';
+        option.disabled = true;
+        selector.appendChild(option);
         return;
     }
+    
+    awayTeams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = team.team_name;
+        selector.appendChild(option);
+    });
+    
+    // Restore selection if it still exists
+    if (currentSelection && awayTeams.find(t => t.id.toString() === currentSelection)) {
+        selector.value = currentSelection;
+        selectAwayTeam();
+    } else {
+        // Clear selection if team was deleted
+        selectedAwayTeamId = null;
+        document.getElementById('selectedAwayTeamDetails').style.display = 'none';
+    }
+}
 
-    list.innerHTML = awayTeams.map(team => `
-        <div class="team-item">
-            <div class="team-header">
-                <span class="team-name" style="color: ${team.team_color}">${team.team_name}</span>
-                <button class="btn btn-danger btn-sm" onclick="deleteAwayTeam(${team.id})">Delete Team</button>
-            </div>
-            <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px; color: #34495e;">Players</h4>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="awayPlayerName_${team.id}">Player Name:</label>
-                        <input type="text" id="awayPlayerName_${team.id}" placeholder="Enter player name">
-                    </div>
-                    <div class="form-group">
-                        <label for="awayPlayerNumber_${team.id}">Player Number:</label>
-                        <input type="number" id="awayPlayerNumber_${team.id}" placeholder="Number" min="1" max="99">
-                    </div>
-                </div>
-                <button class="btn btn-secondary btn-sm" onclick="addAwayTeamPlayer(${team.id})" style="margin-bottom: 15px;">Add Player</button>
-                <div class="players-list">
-                    ${team.players && team.players.length > 0 ? team.players.map(player => `
-                        <div class="player-item">
-                            <span><strong>#${player.player_number}</strong> ${player.player_name}</span>
-                            <button class="btn btn-danger btn-sm" onclick="deleteAwayTeamPlayer(${team.id}, ${player.id})">Delete</button>
-                        </div>
-                    `).join('') : '<p style="color: #7f8c8d; text-align: center; padding: 10px;">No players added yet</p>'}
-                </div>
-            </div>
+function selectAwayTeam() {
+    const selector = document.getElementById('awayTeamSelector');
+    const teamId = selector.value;
+    
+    if (!teamId) {
+        selectedAwayTeamId = null;
+        document.getElementById('selectedAwayTeamDetails').style.display = 'none';
+        return;
+    }
+    
+    selectedAwayTeamId = parseInt(teamId);
+    const team = awayTeams.find(t => t.id === selectedAwayTeamId);
+    
+    if (!team) {
+        showMessage('awayTeamsMessage', 'Team not found', 'error');
+        return;
+    }
+    
+    // Populate team details
+    document.getElementById('editAwayTeamName').value = team.team_name;
+    document.getElementById('editAwayTeamColor').value = team.team_color;
+    
+    // Render players
+    renderSelectedAwayTeamPlayers(team);
+    
+    // Show the details section
+    document.getElementById('selectedAwayTeamDetails').style.display = 'block';
+}
+
+function renderSelectedAwayTeamPlayers(team) {
+    const container = document.getElementById('selectedAwayTeamPlayers');
+    if (!team.players || team.players.length === 0) {
+        container.innerHTML = '<p style="color: #7f8c8d; text-align: center; padding: 10px;">No players added yet</p>';
+        return;
+    }
+    
+    container.innerHTML = team.players.map(player => `
+        <div class="player-item">
+            <span><strong>#${player.player_number}</strong> ${player.player_name}</span>
+            <button class="btn btn-danger btn-sm" onclick="deleteAwayTeamPlayer(${team.id}, ${player.id})">Delete</button>
         </div>
     `).join('');
+}
+
+async function updateAwayTeam() {
+    if (!selectedAwayTeamId) {
+        showMessage('awayTeamsMessage', 'Please select a team first', 'error');
+        return;
+    }
+    
+    try {
+        const teamName = document.getElementById('editAwayTeamName').value.trim();
+        const teamColor = document.getElementById('editAwayTeamColor').value;
+        
+        if (!teamName) {
+            showMessage('awayTeamsMessage', 'Team name is required', 'error');
+            return;
+        }
+        
+        const response = await apiCall(`/away-teams/${selectedAwayTeamId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                team_name: teamName,
+                team_color: teamColor
+            })
+        });
+        
+        if (!response) return;
+        
+        if (response.ok) {
+            showMessage('awayTeamsMessage', 'Team updated successfully!', 'success');
+            await loadAwayTeams();
+            // Re-select the team to refresh the view
+            document.getElementById('awayTeamSelector').value = selectedAwayTeamId;
+            selectAwayTeam();
+        } else {
+            const error = await response.json();
+            showMessage('awayTeamsMessage', error.error || 'Error updating team', 'error');
+        }
+    } catch (error) {
+        console.error('Update away team error:', error);
+        showMessage('awayTeamsMessage', 'Error updating team', 'error');
+    }
+}
+
+async function deleteSelectedAwayTeam() {
+    if (!selectedAwayTeamId) {
+        showMessage('awayTeamsMessage', 'Please select a team first', 'error');
+        return;
+    }
+    
+    await deleteAwayTeam(selectedAwayTeamId);
+}
+
+async function addSelectedAwayTeamPlayer() {
+    if (!selectedAwayTeamId) {
+        showMessage('awayTeamsMessage', 'Please select a team first', 'error');
+        return;
+    }
+    
+    await addAwayTeamPlayer(selectedAwayTeamId);
 }
 
 // ========== GAMES FUNCTIONS ==========

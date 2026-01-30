@@ -269,6 +269,7 @@
             <div class="section-card">
                 <h2>Away Teams</h2>
                 <div id="awayTeamsMessage"></div>
+                
                 <h3>Create New Away Team</h3>
                 <div class="form-row">
                     <div class="form-group">
@@ -282,8 +283,45 @@
                 </div>
                 <button class="btn btn-primary" onclick="createAwayTeam()">Create Away Team</button>
 
-                <h3 style="margin-top: 30px; margin-bottom: 15px;">Away Teams List</h3>
-                <div id="awayTeamsList"></div>
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">Select Away Team</h3>
+                <div class="form-group">
+                    <label for="awayTeamSelector">Choose Team:</label>
+                    <select id="awayTeamSelector" onchange="selectAwayTeam()">
+                        <option value="">-- Select a team to view/edit --</option>
+                    </select>
+                </div>
+
+                <div id="selectedAwayTeamDetails" style="display: none; margin-top: 30px;">
+                    <h3>Team Details</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editAwayTeamName">Team Name:</label>
+                            <input type="text" id="editAwayTeamName" placeholder="Enter team name">
+                        </div>
+                        <div class="form-group">
+                            <label for="editAwayTeamColor">Team Color:</label>
+                            <input type="color" id="editAwayTeamColor" value="#4ecdc4">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="updateAwayTeam()">Update Team</button>
+                        <button class="btn btn-danger" onclick="deleteSelectedAwayTeam()" style="margin-left: 10px;">Delete Team</button>
+                    </div>
+
+                    <h4 style="margin-top: 20px; margin-bottom: 10px; color: #34495e;">Players</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="selectedAwayPlayerName">Player Name:</label>
+                            <input type="text" id="selectedAwayPlayerName" placeholder="Enter player name">
+                        </div>
+                        <div class="form-group">
+                            <label for="selectedAwayPlayerNumber">Player Number:</label>
+                            <input type="number" id="selectedAwayPlayerNumber" placeholder="Number" min="1" max="99">
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="addSelectedAwayTeamPlayer()" style="margin-bottom: 15px;">Add Player</button>
+                    <div id="selectedAwayTeamPlayers" class="players-list"></div>
+                </div>
             </div>
         </div>
 
