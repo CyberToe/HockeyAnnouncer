@@ -566,8 +566,8 @@ module.exports = async function handler(req, res) {
                     }
 
                     return res.json(games);
-                } else if (method === 'POST') {
-                    // Create game
+                } else if (method === 'POST' && (!req.body || !req.body._action || req.body._action !== 'get')) {
+                    // Create game (only if not a get action)
                     const userId = req.user.userId;
                     const { game_name, away_team_id, attending_home_player_ids } = req.body || {};
 
