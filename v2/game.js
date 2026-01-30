@@ -47,11 +47,12 @@ function logout() {
 async function loadGame() {
     try {
         console.log('Loading game with ID:', gameId);
-        // Use POST with _action workaround since GET with IDs doesn't route correctly
-        const response = await apiCall(`/games/${gameId}`, {
+        // Use POST to /games with id in body since routes with IDs don't route correctly
+        const response = await apiCall(`/games`, {
             method: 'POST',
             body: JSON.stringify({
-                _action: 'get'
+                _action: 'get',
+                id: parseInt(gameId)
             })
         });
         console.log('Game response:', {
