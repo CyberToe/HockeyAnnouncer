@@ -95,3 +95,4 @@ CREATE INDEX IF NOT EXISTS idx_away_teams_user_id ON away_teams(user_id);
 CREATE INDEX IF NOT EXISTS idx_games_user_id ON games(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_game_id ON goals(game_id);
 
+

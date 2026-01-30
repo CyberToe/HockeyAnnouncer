@@ -244,6 +244,7 @@ module.exports = async function handler(req, res) {
             // Route: /api/v2/away-teams/:id
             if (route.startsWith('away-teams/')) {
                 const parts = route.split('/');
+                console.log('Away-teams route matched:', { route, parts, method });
                 if (parts.length === 2) {
                     // away-teams/:id (PUT or DELETE)
                     const teamId = parts[1];
@@ -302,6 +303,8 @@ module.exports = async function handler(req, res) {
                 } else if (parts.length === 3 && parts[2] === 'players') {
                     // away-teams/:id/players (POST)
                     const teamId = parts[1];
+                    
+                    console.log('Processing away-teams players route:', { teamId, method, route, parts });
                     
                     if (method === 'POST') {
                         const userId = req.user.userId;

@@ -258,16 +258,18 @@ async function deleteAwayTeam(teamId) {
 }
 
 async function addAwayTeamPlayer(teamId) {
-    const playerName = prompt('Enter player name:');
-    if (!playerName) return;
-
-    const playerNumber = parseInt(prompt('Enter player number (1-99):'));
-    if (!playerNumber || playerNumber < 1 || playerNumber > 99) {
-        alert('Invalid player number');
-        return;
-    }
-
     try {
+        const playerNameInput = document.getElementById(`awayPlayerName_${teamId}`);
+        const playerNumberInput = document.getElementById(`awayPlayerNumber_${teamId}`);
+        
+        const playerName = playerNameInput.value.trim();
+        const playerNumber = parseInt(playerNumberInput.value);
+
+        if (!playerName || !playerNumber || playerNumber < 1 || playerNumber > 99) {
+            showMessage('awayTeamsMessage', 'Please enter a valid name and number (1-99)', 'error');
+            return;
+        }
+
         const response = await apiCall(`/away-teams/${teamId}/players`, {
             method: 'POST',
             body: JSON.stringify({
@@ -279,6 +281,9 @@ async function addAwayTeamPlayer(teamId) {
         if (!response) return;
 
         if (response.ok) {
+            // Clear form fields
+            playerNameInput.value = '';
+            playerNumberInput.value = '';
             showMessage('awayTeamsMessage', 'Player added successfully!', 'success');
             await loadAwayTeams();
         } else {
@@ -328,7 +333,18 @@ function renderAwayTeams() {
                 <button class="btn btn-danger btn-sm" onclick="deleteAwayTeam(${team.id})">Delete Team</button>
             </div>
             <div style="margin-top: 15px;">
-                <button class="btn btn-secondary btn-sm" onclick="addAwayTeamPlayer(${team.id})" style="margin-bottom: 10px;">Add Player</button>
+                <h4 style="margin-bottom: 10px; color: #34495e;">Players</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="awayPlayerName_${team.id}">Player Name:</label>
+                        <input type="text" id="awayPlayerName_${team.id}" placeholder="Enter player name">
+                    </div>
+                    <div class="form-group">
+                        <label for="awayPlayerNumber_${team.id}">Player Number:</label>
+                        <input type="number" id="awayPlayerNumber_${team.id}" placeholder="Number" min="1" max="99">
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="addAwayTeamPlayer(${team.id})" style="margin-bottom: 15px;">Add Player</button>
                 <div class="players-list">
                     ${team.players && team.players.length > 0 ? team.players.map(player => `
                         <div class="player-item">
