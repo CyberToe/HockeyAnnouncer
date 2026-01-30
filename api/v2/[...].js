@@ -24,11 +24,13 @@ function authenticateToken(req, res, next) {
 // Extract the route from the URL
 function getRoute(req) {
     // Vercel catch-all pattern: /api/v2/[...].js
-    // For /api/v2/home-team/players, req.url might be:
-    // - /api/v2/home-team/players (full path)
-    // - /home-team/players (relative to the function)
-    // - home-team/players (just the segments)
+    // For /api/v2/away-teams/1/players, req.url might be:
+    // - /api/v2/away-teams/1/players (full path)
+    // - /away-teams/1/players (relative to the function)
+    // - away-teams/1/players (just the segments)
     let url = req.url || '';
+    
+    console.log('Raw req.url:', url);
     
     // Remove query string if present
     url = url.split('?')[0];
@@ -48,10 +50,20 @@ function getRoute(req) {
     // Remove trailing slashes
     url = url.replace(/\/+$/, '');
     
+    console.log('Parsed route:', url);
+    
     return url;
 }
 
 module.exports = async function handler(req, res) {
+    // Log the incoming request for debugging
+    console.log('V2 catch-all received request:', {
+        method: req.method,
+        url: req.url,
+        path: req.url,
+        query: req.query
+    });
+    
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -67,6 +79,15 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ 
             error: 'Server configuration error: Database connection not configured'
         });
+    }
+    
+    // Parse request body if it exists (for POST/PUT requests)
+    if ((req.method === 'POST' || req.method === 'PUT') && typeof req.body === 'string') {
+        try {
+            req.body = JSON.parse(req.body);
+        } catch (e) {
+            // Body might already be parsed or empty
+        }
     }
 
         // Authenticate (except for health checks)
@@ -243,8 +264,9 @@ module.exports = async function handler(req, res) {
 
             // Route: /api/v2/away-teams/:id
             if (route.startsWith('away-teams/')) {
-                const parts = route.split('/');
-                console.log('Away-teams route matched:', { route, parts, method });
+                const parts = route.split('/').filter(p => p); // Filter out empty strings
+                console.log('Away-teams route matched:', { route, parts, partsLength: parts.length, method });
+                
                 if (parts.length === 2) {
                     // away-teams/:id (PUT or DELETE)
                     const teamId = parts[1];
@@ -304,7 +326,7 @@ module.exports = async function handler(req, res) {
                     // away-teams/:id/players (POST)
                     const teamId = parts[1];
                     
-                    console.log('Processing away-teams players route:', { teamId, method, route, parts });
+                    console.log('Processing away-teams players POST route:', { teamId, method, route, parts, body: req.body });
                     
                     if (method === 'POST') {
                         const userId = req.user.userId;
@@ -345,12 +367,24 @@ module.exports = async function handler(req, res) {
                 }
             }
 
+            // Test route to verify catch-all is working
+            if (route === 'test' || route === '') {
+                return res.json({ 
+                    message: 'V2 catch-all is working', 
+                    route, 
+                    method, 
+                    url: req.url,
+                    parsedRoute: route
+                });
+            }
+
             // If no route matched, return helpful error
-            console.error('Route not matched:', { route, method, url: req.url });
+            console.error('Route not matched:', { route, method, url: req.url, parts: route.split('/') });
             return res.status(404).json({ 
                 error: 'Route not found', 
                 route, 
                 method,
+                url: req.url,
                 availableRoutes: ['home-team', 'home-team/players', 'away-teams', 'away-teams/:id', 'away-teams/:id/players']
             });
         } catch (error) {
