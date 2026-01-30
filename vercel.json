@@ -3,6 +3,12 @@
     "api/tts.js": {
       "maxDuration": 10
     },
+    "api/auth/register.js": {
+      "maxDuration": 30
+    },
+    "api/auth/login.js": {
+      "maxDuration": 30
+    },
     "api/[...].js": {
       "maxDuration": 30
     }
