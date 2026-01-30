@@ -347,7 +347,7 @@ module.exports = async function handler(req, res) {
                     
                     if (method === 'POST') {
                         const userId = req.user.userId;
-                        const { player_name, player_number } = req.body;
+                        const { player_name, player_number } = req.body || {};
 
                         if (!player_name || !player_number) {
                             return res.status(400).json({ error: 'Player name and number are required' });
