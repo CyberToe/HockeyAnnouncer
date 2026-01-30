@@ -44,7 +44,7 @@ app.post('/api/tts', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'xi-api-key': process.env.ELEVENLABS_API_KEY || 'sk_11b0f83e527f39ff6a23020ae9b9246fee3dce41003c7140'
+        'xi-api-key': process.env.HA_ELEVENLABS_API_KEY || 'sk_11b0f83e527f39ff6a23020ae9b9246fee3dce41003c7140'
       },
       body: JSON.stringify({
         text: text,

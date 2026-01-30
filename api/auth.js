@@ -39,7 +39,7 @@ router.post('/register', async (req, res) => {
         // Generate JWT token
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            process.env.JWT_SECRET || 'default-secret-change-in-production',
+            process.env.HA_JWT_SECRET || 'default-secret-change-in-production',
             { expiresIn: '7d' }
         );
 
@@ -84,7 +84,7 @@ router.post('/login', async (req, res) => {
         // Generate JWT token
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            process.env.JWT_SECRET || 'default-secret-change-in-production',
+            process.env.HA_JWT_SECRET || 'default-secret-change-in-production',
             { expiresIn: '7d' }
         );
 
@@ -111,7 +111,7 @@ function authenticateToken(req, res, next) {
         return res.status(401).json({ error: 'Access token required' });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET || 'default-secret-change-in-production', (err, user) => {
+    jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production', (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Invalid or expired token' });
         }

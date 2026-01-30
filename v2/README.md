@@ -23,16 +23,19 @@ Create a `.env` file in the root directory with the following:
 
 ```env
 # Neon Database Connection String
-DATABASE_URL=postgresql://username:password@hostname/database?sslmode=require
+HA_DATABASE_URL=postgresql://neondb_owner:npg_SvDJbfKq36In@ep-falling-mode-ahy9q2ab-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
 
 # JWT Secret (generate a random string for production)
-JWT_SECRET=your-secret-key-here-change-this-in-production
+HA_JWT_SECRET=your-secret-key-here-change-this-in-production
 
 # Node Environment
-NODE_ENV=development
+HA_NODE_ENV=development
+
+# ElevenLabs API Key
+HA_ELEVENLABS_API_KEY=your-elevenlabs-api-key-here
 ```
 
-**Important:** Replace `DATABASE_URL` with your actual Neon database connection string.
+**Important:** The connection string above is already configured. Make sure to set `HA_JWT_SECRET` and `HA_ELEVENLABS_API_KEY` in your environment variables.
 
 ### 3. Initialize Database Schema
 
@@ -136,14 +139,14 @@ All V2 API endpoints require authentication via JWT token:
 
 ### Database Connection Issues
 
-- Verify your `DATABASE_URL` is correct
+- Verify your `HA_DATABASE_URL` is correct
 - Check that your Neon database is active
 - Ensure SSL mode is set correctly in connection string
 
 ### Authentication Issues
 
 - Clear browser localStorage if token issues occur
-- Check that JWT_SECRET is set in `.env`
+- Check that HA_JWT_SECRET is set in `.env`
 
 ### Port Already in Use
 
@@ -153,7 +156,7 @@ All V2 API endpoints require authentication via JWT token:
 ## Security Notes
 
 - Never commit `.env` file to version control
-- Use a strong, random `JWT_SECRET` in production
+- Use a strong, random `HA_JWT_SECRET` in production
 - Passwords are hashed using bcrypt
 - All API endpoints require authentication (except auth endpoints)
 
