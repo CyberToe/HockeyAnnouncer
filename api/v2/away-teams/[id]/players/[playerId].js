@@ -1,4 +1,5 @@
 // Vercel serverless function for deleting away team player
+// Handles DELETE /api/v2/away-teams/:id/players/:playerId
 const { query } = require('../../../../../database/db');
 const jwt = require('jsonwebtoken');
 
@@ -43,22 +44,9 @@ module.exports = async function handler(req, res) {
             const userId = req.user.userId;
 
             if (req.method === 'DELETE') {
-                // Get IDs from URL - Vercel passes them in req.query or extract from URL
-                let teamId = req.query?.teamId;
-                let playerId = req.query?.playerId;
-                
-                // If not in query, try to extract from URL path like /api/v2/away-teams/123/players/456
-                if (!teamId || !playerId) {
-                    const urlParts = (req.url || '').split('/');
-                    const teamIdIndex = urlParts.indexOf('away-teams');
-                    if (teamIdIndex !== -1) {
-                        teamId = teamId || urlParts[teamIdIndex + 1];
-                        const playersIndex = urlParts.indexOf('players', teamIdIndex);
-                        if (playersIndex !== -1 && playersIndex + 1 < urlParts.length) {
-                            playerId = playerId || urlParts[playersIndex + 1];
-                        }
-                    }
-                }
+                // Get IDs from Vercel query params
+                const teamId = req.query?.id;
+                const playerId = req.query?.playerId;
 
                 if (!teamId || !playerId || isNaN(teamId) || isNaN(playerId)) {
                     return res.status(400).json({ error: 'Invalid team ID or player ID' });

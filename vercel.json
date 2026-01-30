@@ -21,10 +21,10 @@
     "api/v2/away-teams/[id].js": {
       "maxDuration": 30
     },
-    "api/v2/away-teams/[teamId]/players.js": {
+    "api/v2/away-teams/[id]/players.js": {
       "maxDuration": 30
     },
-    "api/v2/away-teams/[teamId]/players/[playerId].js": {
+    "api/v2/away-teams/[id]/players/[playerId].js": {
       "maxDuration": 30
     },
     "api/v2/[...].js": {

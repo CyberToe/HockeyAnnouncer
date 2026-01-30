@@ -1,4 +1,5 @@
 // Vercel serverless function for away team players
+// Handles POST /api/v2/away-teams/:id/players
 const { query } = require('../../../../database/db');
 const jwt = require('jsonwebtoken');
 
@@ -43,16 +44,8 @@ module.exports = async function handler(req, res) {
             const userId = req.user.userId;
             const method = req.method;
 
-            // Get team ID from URL
-            let teamId = req.query?.teamId;
-            if (!teamId) {
-                // Extract from URL path like /api/v2/away-teams/123/players
-                const urlParts = (req.url || '').split('/');
-                const teamIdIndex = urlParts.indexOf('away-teams');
-                if (teamIdIndex !== -1 && teamIdIndex + 1 < urlParts.length) {
-                    teamId = urlParts[teamIdIndex + 1];
-                }
-            }
+            // Get team ID from URL - Vercel passes it in req.query.id
+            const teamId = req.query?.id;
 
             if (!teamId || isNaN(teamId)) {
                 return res.status(400).json({ error: 'Invalid team ID' });
