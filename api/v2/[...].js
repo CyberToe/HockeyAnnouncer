@@ -576,12 +576,16 @@ module.exports = async function handler(req, res) {
             // Route: /api/v2/games/:id
             if (route.startsWith('games/')) {
                 const parts = route.split('/').filter(p => p);
+                console.log('Games route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
+                
                 if (parts.length === 2 && parts[0] === 'games') {
                     const gameId = parts[1];
+                    console.log('Processing games/:id route:', { gameId, method, route, parts });
                     
                     if (method === 'GET') {
                         // Get single game with all details
                         const userId = req.user.userId;
+                        console.log('Getting game:', { gameId, userId });
 
                         const gameResult = await query(
                             `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
