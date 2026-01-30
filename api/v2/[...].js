@@ -99,19 +99,13 @@ module.exports = async function handler(req, res) {
     const rawUrl = req.url || '';
     const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
     const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
-    // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
-    // This handles cases where Vercel's catch-all routing might not work correctly
-    // Also handle POST with _method=PUT/DELETE workaround
-    const rawUrl = req.url || '';
-    const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
-    const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
-    if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
+    if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrlEarly.includes('/away-teams/') && !rawUrlEarly.includes('/players')) {
         // Extract team ID from URL pattern: /api/v2/away-teams/123 or away-teams/123
-        const match = rawUrl.match(/away-teams\/(\d+)/);
+        const match = rawUrlEarly.match(/away-teams\/(\d+)/);
         if (match) {
             const teamId = match[1];
             const actualMethod = isPutWorkaround ? 'PUT' : (isDeleteWorkaround ? 'DELETE' : req.method);
-            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrl, isPutWorkaround, isDeleteWorkaround });
+            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrlEarly, isPutWorkaround, isDeleteWorkaround });
             
             // Authenticate first
             const authHeader = req.headers['authorization'];
@@ -173,16 +167,16 @@ module.exports = async function handler(req, res) {
     
     // Authenticate (except for health checks)
     authenticateToken(req, res, async () => {
-            try {
-                const route = getRoute(req);
-                const method = req.method;
+        try {
+            const route = getRoute(req);
+            const method = req.method;
                 
-                console.log('V2 API Request:', { url: req.url, route, method, rawUrl: req.url });
-                
-                // Early check for away-teams routes to ensure they're handled
-                if (route && (route.startsWith('away-teams') || req.url.includes('away-teams'))) {
-                    console.log('Early away-teams route detection:', { route, method, url: req.url });
-                }
+            console.log('V2 API Request:', { url: req.url, route, method, rawUrl: req.url });
+            
+            // Early check for away-teams routes to ensure they're handled
+            if (route && (route.startsWith('away-teams') || req.url.includes('away-teams'))) {
+                console.log('Early away-teams route detection:', { route, method, url: req.url });
+            }
 
             // Route: /api/v2/home-team
             if (route === 'home-team') {
