@@ -384,6 +384,183 @@ module.exports = async function handler(req, res) {
                 }
             }
 
+            // ========== GAMES ROUTES ==========
+            
+            // Route: /api/v2/games
+            if (route === 'games') {
+                if (method === 'GET') {
+                    // Get all games
+                    const userId = req.user.userId;
+                    
+                    const result = await query(
+                        `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color
+                         FROM games g
+                         JOIN away_teams at ON g.away_team_id = at.id
+                         WHERE g.user_id = $1
+                         ORDER BY g.created_at DESC`,
+                        [userId]
+                    );
+
+                    const games = result.rows;
+                    
+                    // Get attending home players for each game
+                    for (const game of games) {
+                        const playersResult = await query(
+                            `SELECT htp.* FROM game_home_players ghp
+                             JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                             WHERE ghp.game_id = $1
+                             ORDER BY htp.player_number`,
+                            [game.id]
+                        );
+                        game.attending_home_players = playersResult.rows;
+                    }
+
+                    return res.json(games);
+                } else if (method === 'POST') {
+                    // Create game
+                    const userId = req.user.userId;
+                    const { game_name, away_team_id, attending_home_player_ids } = req.body || {};
+
+                    // Verify away team belongs to user
+                    const teamResult = await query(
+                        'SELECT id FROM away_teams WHERE id = $1 AND user_id = $2',
+                        [away_team_id, userId]
+                    );
+
+                    if (teamResult.rows.length === 0) {
+                        return res.status(404).json({ error: 'Away team not found' });
+                    }
+
+                    // Create game
+                    const gameResult = await query(
+                        'INSERT INTO games (user_id, game_name, away_team_id) VALUES ($1, $2, $3) RETURNING *',
+                        [userId, game_name || null, away_team_id]
+                    );
+
+                    const game = gameResult.rows[0];
+
+                    // Add attending home players
+                    if (attending_home_player_ids && attending_home_player_ids.length > 0) {
+                        for (const playerId of attending_home_player_ids) {
+                            // Verify player belongs to user's home team
+                            const verifyResult = await query(
+                                `SELECT htp.id FROM home_team_players htp
+                                 JOIN home_teams ht ON htp.home_team_id = ht.id
+                                 WHERE htp.id = $1 AND ht.user_id = $2`,
+                                [playerId, userId]
+                            );
+
+                            if (verifyResult.rows.length > 0) {
+                                await query(
+                                    'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                    [game.id, playerId]
+                                );
+                            }
+                        }
+                    }
+
+                    return res.status(201).json(game);
+                }
+            }
+
+            // Route: /api/v2/games/:id
+            if (route.startsWith('games/')) {
+                const parts = route.split('/').filter(p => p);
+                if (parts.length === 2 && parts[0] === 'games') {
+                    const gameId = parts[1];
+                    
+                    if (method === 'GET') {
+                        // Get single game with all details
+                        const userId = req.user.userId;
+
+                        const gameResult = await query(
+                            `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
+                             FROM games g
+                             JOIN away_teams at ON g.away_team_id = at.id
+                             WHERE g.id = $1 AND g.user_id = $2`,
+                            [parseInt(gameId), userId]
+                        );
+
+                        if (gameResult.rows.length === 0) {
+                            return res.status(404).json({ error: 'Game not found' });
+                        }
+
+                        const game = gameResult.rows[0];
+
+                        // Get attending home players
+                        const playersResult = await query(
+                            `SELECT htp.* FROM game_home_players ghp
+                             JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                             WHERE ghp.game_id = $1
+                             ORDER BY htp.player_number`,
+                            [parseInt(gameId)]
+                        );
+                        game.attending_home_players = playersResult.rows;
+
+                        // Get goals
+                        const goalsResult = await query(
+                            'SELECT * FROM goals WHERE game_id = $1 ORDER BY created_at',
+                            [parseInt(gameId)]
+                        );
+                        game.goals = goalsResult.rows;
+
+                        return res.json(game);
+                    }
+                } else if (parts.length === 4 && parts[0] === 'games' && parts[2] === 'goals') {
+                    // Route: /api/v2/games/:id/goals
+                    const gameId = parts[1];
+                    const goalId = parts[3];
+                    
+                    if (method === 'DELETE') {
+                        // Delete goal
+                        const userId = req.user.userId;
+
+                        // Verify goal belongs to user's game
+                        const verifyResult = await query(
+                            `SELECT g.id FROM goals g
+                             JOIN games gm ON g.game_id = gm.id
+                             WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
+                            [parseInt(goalId), parseInt(gameId), userId]
+                        );
+
+                        if (verifyResult.rows.length === 0) {
+                            return res.status(404).json({ error: 'Goal not found' });
+                        }
+
+                        await query('DELETE FROM goals WHERE id = $1', [parseInt(goalId)]);
+                        return res.json({ message: 'Goal deleted' });
+                    }
+                } else if (parts.length === 3 && parts[0] === 'games' && parts[2] === 'goals') {
+                    // Route: /api/v2/games/:id/goals (POST)
+                    const gameId = parts[1];
+                    
+                    if (method === 'POST') {
+                        // Record goal
+                        const userId = req.user.userId;
+                        const { team, scorer_id, assist1_id, assist2_id, period, time_remaining } = req.body || {};
+
+                        // Verify game belongs to user
+                        const gameResult = await query(
+                            'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+                            [parseInt(gameId), userId]
+                        );
+
+                        if (gameResult.rows.length === 0) {
+                            return res.status(404).json({ error: 'Game not found' });
+                        }
+
+                        // Insert goal
+                        const result = await query(
+                            `INSERT INTO goals (game_id, team, scorer_id, assist1_id, assist2_id, period, time_remaining)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+                            [parseInt(gameId), team, scorer_id || null, assist1_id || null, assist2_id || null, period || null, time_remaining || null]
+                        );
+
+                        return res.status(201).json(result.rows[0]);
+                    }
+                }
+            }
+
             // Test route to verify catch-all is working
             if (route === 'test' || route === '') {
                 return res.json({ 
@@ -402,7 +579,7 @@ module.exports = async function handler(req, res) {
                 route, 
                 method,
                 url: req.url,
-                availableRoutes: ['home-team', 'home-team/players', 'away-teams', 'away-teams/:id', 'away-teams/:id/players']
+                availableRoutes: ['home-team', 'home-team/players', 'away-teams', 'away-teams/:id', 'away-teams/:id/players', 'games', 'games/:id']
             });
         } catch (error) {
             console.error('V2 API error:', error);

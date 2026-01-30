@@ -501,12 +501,21 @@ async function loadGames() {
         const response = await apiCall('/games');
         if (!response) return;
         
-        games = await response.json();
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+            showMessage('gamesMessage', error.error || 'Error loading games', 'error');
+            return;
+        }
+        
+        const data = await response.json();
+        // Ensure games is always an array
+        games = Array.isArray(data) ? data : [];
         renderGames();
         // Update dropdown when games are loaded (away teams should already be loaded)
         updateGamesDropdown();
     } catch (error) {
         console.error('Load games error:', error);
+        games = []; // Set to empty array on error
         showMessage('gamesMessage', 'Error loading games', 'error');
     }
 }
