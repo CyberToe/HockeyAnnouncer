@@ -189,13 +189,166 @@ module.exports = async function handler(req, res) {
                 }
             }
 
+            // ========== AWAY TEAMS ROUTES ==========
+            
+            // Route: /api/v2/away-teams
+            if (route === 'away-teams') {
+                if (method === 'GET') {
+                    // Get all away teams
+                    const userId = req.user.userId;
+                    
+                    const result = await query(
+                        'SELECT * FROM away_teams WHERE user_id = $1 ORDER BY team_name',
+                        [userId]
+                    );
+
+                    const teams = result.rows;
+                    
+                    // Get players for each team
+                    for (const team of teams) {
+                        const playersResult = await query(
+                            'SELECT * FROM away_team_players WHERE away_team_id = $1 ORDER BY player_number',
+                            [team.id]
+                        );
+                        team.players = playersResult.rows;
+                    }
+
+                    return res.json(teams);
+                } else if (method === 'POST') {
+                    // Create away team
+                    const userId = req.user.userId;
+                    const { team_name, team_color } = req.body;
+
+                    if (!team_name) {
+                        return res.status(400).json({ error: 'Team name is required' });
+                    }
+
+                    try {
+                        const result = await query(
+                            'INSERT INTO away_teams (user_id, team_name, team_color) VALUES ($1, $2, $3) RETURNING *',
+                            [userId, team_name, team_color || '#4ecdc4']
+                        );
+
+                        const team = result.rows[0];
+                        team.players = [];
+                        return res.status(201).json(team);
+                    } catch (dbError) {
+                        if (dbError.code === '23505') {
+                            return res.status(400).json({ error: 'Team name already exists' });
+                        }
+                        throw dbError;
+                    }
+                }
+            }
+
+            // Route: /api/v2/away-teams/:id
+            if (route.startsWith('away-teams/')) {
+                const parts = route.split('/');
+                if (parts.length === 2) {
+                    // away-teams/:id (PUT or DELETE)
+                    const teamId = parts[1];
+                    
+                    if (method === 'PUT') {
+                        const userId = req.user.userId;
+                        const { team_name, team_color } = req.body;
+
+                        const result = await query(
+                            'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                            [team_name, team_color, parseInt(teamId), userId]
+                        );
+
+                        if (result.rows.length === 0) {
+                            return res.status(404).json({ error: 'Away team not found' });
+                        }
+
+                        return res.json(result.rows[0]);
+                    } else if (method === 'DELETE') {
+                        const userId = req.user.userId;
+
+                        const result = await query(
+                            'DELETE FROM away_teams WHERE id = $1 AND user_id = $2 RETURNING id',
+                            [parseInt(teamId), userId]
+                        );
+
+                        if (result.rows.length === 0) {
+                            return res.status(404).json({ error: 'Away team not found' });
+                        }
+
+                        return res.json({ message: 'Away team deleted' });
+                    }
+                } else if (parts.length === 4 && parts[2] === 'players') {
+                    // away-teams/:id/players/:playerId (DELETE)
+                    const teamId = parts[1];
+                    const playerId = parts[3];
+                    
+                    if (method === 'DELETE') {
+                        const userId = req.user.userId;
+
+                        // Verify player belongs to user's away team
+                        const verifyResult = await query(
+                            `SELECT atp.id FROM away_team_players atp
+                             JOIN away_teams at ON atp.away_team_id = at.id
+                             WHERE atp.id = $1 AND at.id = $2 AND at.user_id = $3`,
+                            [parseInt(playerId), parseInt(teamId), userId]
+                        );
+
+                        if (verifyResult.rows.length === 0) {
+                            return res.status(404).json({ error: 'Player not found' });
+                        }
+
+                        await query('DELETE FROM away_team_players WHERE id = $1', [parseInt(playerId)]);
+                        return res.json({ message: 'Player deleted' });
+                    }
+                } else if (parts.length === 3 && parts[2] === 'players') {
+                    // away-teams/:id/players (POST)
+                    const teamId = parts[1];
+                    
+                    if (method === 'POST') {
+                        const userId = req.user.userId;
+                        const { player_name, player_number } = req.body;
+
+                        if (!player_name || !player_number) {
+                            return res.status(400).json({ error: 'Player name and number are required' });
+                        }
+
+                        if (player_number < 1 || player_number > 99) {
+                            return res.status(400).json({ error: 'Player number must be between 1 and 99' });
+                        }
+
+                        // Verify team belongs to user
+                        const verifyResult = await query(
+                            'SELECT id FROM away_teams WHERE id = $1 AND user_id = $2',
+                            [parseInt(teamId), userId]
+                        );
+
+                        if (verifyResult.rows.length === 0) {
+                            return res.status(404).json({ error: 'Away team not found' });
+                        }
+
+                        try {
+                            const result = await query(
+                                'INSERT INTO away_team_players (away_team_id, player_name, player_number) VALUES ($1, $2, $3) RETURNING *',
+                                [parseInt(teamId), player_name, parseInt(player_number)]
+                            );
+
+                            return res.status(201).json(result.rows[0]);
+                        } catch (dbError) {
+                            if (dbError.code === '23505') {
+                                return res.status(400).json({ error: 'Player number already exists' });
+                            }
+                            throw dbError;
+                        }
+                    }
+                }
+            }
+
             // If no route matched, return helpful error
             console.error('Route not matched:', { route, method, url: req.url });
             return res.status(404).json({ 
                 error: 'Route not found', 
                 route, 
                 method,
-                availableRoutes: ['home-team', 'home-team/players']
+                availableRoutes: ['home-team', 'home-team/players', 'away-teams', 'away-teams/:id', 'away-teams/:id/players']
             });
         } catch (error) {
             console.error('V2 API error:', error);
