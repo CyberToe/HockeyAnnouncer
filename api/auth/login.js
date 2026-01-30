@@ -4,6 +4,14 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../../database/db');
 
 module.exports = async function handler(req, res) {
+    // Log environment check (remove in production if sensitive)
+    if (!process.env.HA_DATABASE_URL) {
+        console.error('HA_DATABASE_URL is not set in environment variables');
+        return res.status(500).json({ 
+            error: 'Server configuration error: Database connection not configured',
+            details: 'Please contact the administrator'
+        });
+    }
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

@@ -1,10 +1,22 @@
 // Database connection and utilities for Neon PostgreSQL
 const { Pool } = require('pg');
-require('dotenv').config();
 
+// Load dotenv only in local development (not needed on Vercel)
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    require('dotenv').config();
+}
+
+const connectionString = process.env.HA_DATABASE_URL;
+
+if (!connectionString) {
+    console.error('❌ HA_DATABASE_URL environment variable is not set!');
+    console.error('Please set HA_DATABASE_URL in your Vercel environment variables.');
+}
+
+// Neon requires SSL, so always enable it
 const pool = new Pool({
-    connectionString: process.env.HA_DATABASE_URL,
-    ssl: process.env.HA_NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    connectionString: connectionString,
+    ssl: connectionString ? { rejectUnauthorized: false } : false
 });
 
 // Test database connection
