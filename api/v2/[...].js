@@ -574,18 +574,20 @@ module.exports = async function handler(req, res) {
             }
 
             // Route: /api/v2/games/:id
-            if (route.startsWith('games/')) {
+            // Check multiple ways to ensure we catch the route
+            if (route.startsWith('games/') || (req.url && req.url.includes('games/') && !req.url.includes('goals'))) {
                 const parts = route.split('/').filter(p => p);
                 console.log('Games route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
                 
-                if (parts.length === 2 && parts[0] === 'games') {
+                // Handle games/:id (2 parts) or games/:id/... (3+ parts)
+                if (parts.length >= 2 && parts[0] === 'games') {
                     const gameId = parts[1];
-                    console.log('Processing games/:id route:', { gameId, method, route, parts });
+                    console.log('Processing games/:id route:', { gameId, method, route, parts, body: req.body });
                     
                     // Handle GET or POST with _action='get' (workaround for Vercel routing)
                     const isGet = method === 'GET' || (method === 'POST' && req.body && req.body._action === 'get');
                     
-                    if (isGet) {
+                    if (isGet && parts.length === 2) {
                         // Get single game with all details
                         const userId = req.user.userId;
                         console.log('Getting game:', { gameId, userId });
@@ -627,7 +629,11 @@ module.exports = async function handler(req, res) {
                         game.goals = goalsResult.rows;
 
                         return res.json(game);
-                    } else if (method === 'POST' && req.body && req.body._action === 'update-attending-players') {
+                    }
+                }
+                
+                // Handle POST with _action for games/:id (not games/:id/goals)
+                if (parts.length === 2 && parts[0] === 'games' && method === 'POST' && req.body && req.body._action === 'update-attending-players') {
                         // Update attending players: POST /api/v2/games/:id with _action=update-attending-players
                         const userId = req.user.userId;
                         const { attending_home_player_ids } = req.body || {};

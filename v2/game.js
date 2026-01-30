@@ -212,20 +212,31 @@ function renderGameInfo() {
 }
 
 function updatePlayerDropdowns() {
+    // Don't update if game data isn't loaded yet
+    if (!currentGame || !awayTeam) {
+        console.log('Cannot update player dropdowns - game data not loaded', { currentGame, awayTeam });
+        return;
+    }
+    
     const scoringTeam = document.getElementById('scoringTeam').value;
     const scorerSelect = document.getElementById('scorer');
     const assist1Select = document.getElementById('assist1');
     const assist2Select = document.getElementById('assist2');
+
+    if (!scorerSelect || !assist1Select || !assist2Select) {
+        console.log('Dropdown elements not found');
+        return;
+    }
 
     let players = [];
     let isHome = scoringTeam === 'home';
 
     if (isHome) {
         // Get attending home players
-        players = currentGame.attending_home_players || [];
+        players = (currentGame && currentGame.attending_home_players) ? currentGame.attending_home_players : [];
     } else {
         // Get away team players
-        players = awayTeam.players || [];
+        players = (awayTeam && awayTeam.players) ? awayTeam.players : [];
     }
 
     // Update scorer dropdown
