@@ -17,13 +17,32 @@ document.getElementById('userEmail').textContent = currentUser.email || '';
 
 // API helper function
 async function apiCall(endpoint, options = {}) {
-    const response = await fetch(`${API_BASE_URL}/api/v2${endpoint}`, {
+    const fullUrl = `${API_BASE_URL}/api/v2${endpoint}`;
+    
+    console.log('apiCall:', {
+        endpoint,
+        fullUrl,
+        method: options.method || 'GET',
+        hasBody: !!options.body,
+        bodyPreview: options.body ? options.body.substring(0, 100) : null
+    });
+    
+    const response = await fetch(fullUrl, {
         ...options,
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`,
             ...options.headers
         }
+    });
+
+    console.log('apiCall response:', {
+        url: response.url,
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        redirected: response.redirected,
+        type: response.type
     });
 
     if (response.status === 401) {
