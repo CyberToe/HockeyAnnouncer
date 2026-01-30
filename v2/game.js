@@ -82,12 +82,87 @@ async function loadGame() {
         }
 
         renderGameInfo();
+        renderAttendingPlayers();
         updatePlayerDropdowns();
         renderGoals();
     } catch (error) {
         console.error('Load game error:', error);
         showMessage('Error loading game', 'error');
     }
+}
+
+// Tab switching
+function switchGameTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+
+// Render attending players checkboxes
+function renderAttendingPlayers() {
+    const container = document.getElementById('attendingPlayersCheckboxes');
+    if (!homeTeam || !homeTeam.players || homeTeam.players.length === 0) {
+        container.innerHTML = '<p style="color: #7f8c8d; padding: 10px;">No home team players available. Add players in the Home Team section first.</p>';
+        return;
+    }
+
+    const attendingPlayerIds = (currentGame.attending_home_players || []).map(p => p.id);
+
+    container.innerHTML = homeTeam.players.map(player => {
+        const isChecked = attendingPlayerIds.includes(player.id);
+        return `
+            <div class="checkbox-item">
+                <input type="checkbox" id="attending_${player.id}" value="${player.id}" ${isChecked ? 'checked' : ''}>
+                <label for="attending_${player.id}">#${player.player_number} ${player.player_name}</label>
+            </div>
+        `;
+    }).join('');
+}
+
+// Save attending players
+async function saveAttendingPlayers() {
+    try {
+        const checkboxes = document.querySelectorAll('#attendingPlayersCheckboxes input[type="checkbox"]:checked');
+        const attendingPlayerIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        const response = await apiCall(`/games/${gameId}/attending-players`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                attending_home_player_ids: attendingPlayerIds
+            })
+        });
+
+        if (!response) return;
+
+        if (response.ok) {
+            showMessage('attendingMessage', 'Attending players updated successfully!', 'success');
+            await loadGame(); // Reload to refresh attending players
+        } else {
+            const error = await response.json();
+            showMessage('attendingMessage', error.error || 'Error updating attending players', 'error');
+        }
+    } catch (error) {
+        console.error('Save attending players error:', error);
+        showMessage('attendingMessage', 'Error updating attending players', 'error');
+    }
+}
+
+function showMessage(elementId, message, type) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    element.className = type === 'error' ? 'error-message' : 'success-message';
+    element.textContent = message;
+    element.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        element.style.display = 'none';
+    }, 5000);
 }
 
 function renderGameInfo() {

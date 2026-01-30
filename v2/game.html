@@ -124,6 +124,52 @@
             border-radius: 8px;
             margin-bottom: 15px;
         }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 12px 24px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #7f8c8d;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            background: #d5dbdb;
+        }
+        .tab.active {
+            background: white;
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -137,10 +183,28 @@
 
         <div id="gameMessage"></div>
 
-        <!-- Record Goal Section -->
-        <div class="section-card">
-            <h2>Record Goal</h2>
-            <form id="goalForm" onsubmit="recordGoal(event)">
+        <!-- Tabs -->
+        <div class="tabs" style="margin-bottom: 20px;">
+            <button class="tab active" onclick="switchGameTab('attending')">Attending Players</button>
+            <button class="tab" onclick="switchGameTab('goals')">Record Goal</button>
+        </div>
+
+        <!-- Attending Players Tab -->
+        <div id="attending-tab" class="tab-content active">
+            <div class="section-card">
+                <h2>Select Attending Home Team Players</h2>
+                <div id="attendingMessage"></div>
+                <div id="attendingPlayersCheckboxes" class="checkbox-group"></div>
+                <button class="btn btn-primary" onclick="saveAttendingPlayers()" style="margin-top: 15px;">Save Attending Players</button>
+            </div>
+        </div>
+
+        <!-- Record Goal Tab -->
+        <div id="goals-tab" class="tab-content">
+            <!-- Record Goal Section -->
+            <div class="section-card">
+                <h2>Record Goal</h2>
+                <form id="goalForm" onsubmit="recordGoal(event)">
                 <div class="form-group">
                     <label for="scoringTeam">Scoring Team:</label>
                     <select id="scoringTeam" onchange="updatePlayerDropdowns()">
@@ -186,14 +250,15 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary">Record Goal</button>
-            </form>
-        </div>
+                    <button type="submit" class="btn btn-primary">Record Goal</button>
+                </form>
+            </div>
 
-        <!-- Goals List Section -->
-        <div class="section-card">
-            <h2>Goal Log</h2>
-            <div id="goalsList"></div>
+            <!-- Goals List Section -->
+            <div class="section-card">
+                <h2>Goal Log</h2>
+                <div id="goalsList"></div>
+            </div>
         </div>
     </div>
 

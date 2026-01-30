@@ -615,6 +615,66 @@ module.exports = async function handler(req, res) {
                         game.goals = goalsResult.rows;
 
                         return res.json(game);
+                    } else if (method === 'PUT' && parts.length === 3 && parts[2] === 'attending-players') {
+                        // Update attending players: PUT /api/v2/games/:id/attending-players
+                        const userId = req.user.userId;
+                        const { attending_home_player_ids } = req.body || {};
+
+                        // Verify game belongs to user
+                        const gameResult = await query(
+                            'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+                            [parseInt(gameId), userId]
+                        );
+
+                        if (gameResult.rows.length === 0) {
+                            return res.status(404).json({ error: 'Game not found' });
+                        }
+
+                        // Delete all existing attending players
+                        await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
+
+                        // Add new attending players
+                        if (attending_home_player_ids && attending_home_player_ids.length > 0) {
+                            for (const playerId of attending_home_player_ids) {
+                                // Verify player belongs to user's home team
+                                const verifyResult = await query(
+                                    `SELECT htp.id FROM home_team_players htp
+                                     JOIN home_teams ht ON htp.home_team_id = ht.id
+                                     WHERE htp.id = $1 AND ht.user_id = $2`,
+                                    [playerId, userId]
+                                );
+
+                                if (verifyResult.rows.length > 0) {
+                                    await query(
+                                        'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                        [parseInt(gameId), playerId]
+                                    );
+                                }
+                            }
+                        }
+
+                        // Return updated game with attending players
+                        const updatedGameResult = await query(
+                            `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
+                             FROM games g
+                             JOIN away_teams at ON g.away_team_id = at.id
+                             WHERE g.id = $1 AND g.user_id = $2`,
+                            [parseInt(gameId), userId]
+                        );
+
+                        const updatedGame = updatedGameResult.rows[0];
+
+                        // Get attending home players
+                        const playersResult = await query(
+                            `SELECT htp.* FROM game_home_players ghp
+                             JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                             WHERE ghp.game_id = $1
+                             ORDER BY htp.player_number`,
+                            [parseInt(gameId)]
+                        );
+                        updatedGame.attending_home_players = playersResult.rows;
+
+                        return res.json(updatedGame);
                     }
                 } else if (parts.length === 4 && parts[0] === 'games' && parts[2] === 'goals') {
                     // Route: /api/v2/games/:id/goals
@@ -641,10 +701,12 @@ module.exports = async function handler(req, res) {
                         return res.json({ message: 'Goal deleted' });
                     }
                 } else if (parts.length === 3 && parts[0] === 'games' && parts[2] === 'goals') {
-                    // Route: /api/v2/games/:id/goals (POST)
+                    // Route: /api/v2/games/:id/goals (POST) - Use POST with _action workaround
                     const gameId = parts[1];
+                    const isPost = method === 'POST';
+                    const isPutWorkaround = method === 'POST' && req.body && req.body._action === 'PUT';
                     
-                    if (method === 'POST') {
+                    if (isPost || isPutWorkaround) {
                         // Record goal
                         const userId = req.user.userId;
                         const { team, scorer_id, assist1_id, assist2_id, period, time_remaining } = req.body || {};
