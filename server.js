@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { initializeDatabase } = require('./database/db');
+const { router: authRouter } = require('./api/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +15,18 @@ app.use(express.json());
 
 // Serve static files from the current directory
 app.use(express.static('.'));
+
+// Initialize database on startup
+initializeDatabase().catch(err => {
+    console.error('Failed to initialize database:', err);
+});
+
+// Authentication routes
+app.use('/api/auth', authRouter);
+
+// V2 API routes
+const v2Router = require('./api/v2');
+app.use('/api/v2', v2Router);
 
 // API endpoint for TTS (simulates Vercel serverless function)
 app.post('/api/tts', async (req, res) => {

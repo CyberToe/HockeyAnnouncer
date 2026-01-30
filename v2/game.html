@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game - Hockey Goal Announcer V2</title>
+    <link rel="stylesheet" href="../styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .game-header {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .game-header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .game-info {
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+        .back-btn {
+            padding: 8px 16px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .back-btn:hover {
+            background: #7f8c8d;
+        }
+        .section-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .section-card h2 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .goal-item {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        .goal-info {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .goal-team {
+            padding: 8px 16px;
+            border-radius: 25px;
+            color: black;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .goal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .success-message {
+            background: #efe;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+        <div class="game-header">
+            <h1 id="gameTitle">Loading Game...</h1>
+            <div class="game-info" id="gameInfo"></div>
+        </div>
+
+        <div id="gameMessage"></div>
+
+        <!-- Record Goal Section -->
+        <div class="section-card">
+            <h2>Record Goal</h2>
+            <form id="goalForm" onsubmit="recordGoal(event)">
+                <div class="form-group">
+                    <label for="scoringTeam">Scoring Team:</label>
+                    <select id="scoringTeam" onchange="updatePlayerDropdowns()">
+                        <option value="home">Home Team</option>
+                        <option value="away">Away Team</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="scorer">Scorer:</label>
+                    <select id="scorer" required>
+                        <option value="">Select scorer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="assist1">Assist 1 (Optional):</label>
+                    <select id="assist1">
+                        <option value="">No assist</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="assist2">Assist 2 (Optional):</label>
+                    <select id="assist2">
+                        <option value="">No assist</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="period">Period:</label>
+                        <select id="period" required>
+                            <option value="1">1st Period</option>
+                            <option value="2">2nd Period</option>
+                            <option value="3">3rd Period</option>
+                            <option value="ot">Overtime</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="timeRemaining">Time Remaining:</label>
+                        <input type="text" id="timeRemaining" placeholder="MM:SS" value="4:25" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Record Goal</button>
+            </form>
+        </div>
+
+        <!-- Goals List Section -->
+        <div class="section-card">
+            <h2>Goal Log</h2>
+            <div id="goalsList"></div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
+
