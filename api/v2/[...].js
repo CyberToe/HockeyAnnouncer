@@ -61,7 +61,8 @@ module.exports = async function handler(req, res) {
         method: req.method,
         url: req.url,
         path: req.url,
-        query: req.query
+        query: req.query,
+        rawUrl: req.url
     });
     
     // Enable CORS
@@ -92,9 +93,72 @@ module.exports = async function handler(req, res) {
         }
     }
     
+    // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
+    // This handles cases where Vercel's catch-all routing might not work correctly
+    const rawUrl = req.url || '';
+    if ((req.method === 'PUT' || req.method === 'DELETE') && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
+        // Extract team ID from URL pattern: /api/v2/away-teams/123 or away-teams/123
+        const match = rawUrl.match(/away-teams\/(\d+)/);
+        if (match) {
+            const teamId = match[1];
+            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, url: rawUrl });
+            
+            // Authenticate first
+            const authHeader = req.headers['authorization'];
+            const token = authHeader && authHeader.split(' ')[1];
+            
+            if (!token) {
+                return res.status(401).json({ error: 'Access token required' });
+            }
+            
+            try {
+                const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
+                req.user = decoded;
+                
+                if (req.method === 'PUT') {
+                    const userId = req.user.userId;
+                    const { team_name, team_color } = req.body || {};
+
+                    if (!team_name) {
+                        return res.status(400).json({ error: 'Team name is required' });
+                    }
+
+                    const result = await query(
+                        'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                        [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
+                    );
+
+                    if (result.rows.length === 0) {
+                        return res.status(404).json({ error: 'Away team not found' });
+                    }
+
+                    return res.json(result.rows[0]);
+                } else if (req.method === 'DELETE') {
+                    const userId = req.user.userId;
+
+                    const result = await query(
+                        'DELETE FROM away_teams WHERE id = $1 AND user_id = $2 RETURNING id',
+                        [parseInt(teamId), userId]
+                    );
+
+                    if (result.rows.length === 0) {
+                        return res.status(404).json({ error: 'Away team not found' });
+                    }
+
+                    return res.json({ message: 'Away team deleted' });
+                }
+            } catch (err) {
+                if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+                    return res.status(403).json({ error: 'Invalid or expired token' });
+                }
+                throw err;
+            }
+        }
+    }
+    
     // Log request for debugging
     if (req.method === 'PUT' && req.url && req.url.includes('away-teams')) {
-        console.log('PUT away-teams request:', {
+        console.log('PUT away-teams request (after early handler):', {
             url: req.url,
             body: req.body,
             bodyType: typeof req.body
