@@ -58,7 +58,11 @@ function switchTab(tabName) {
     } else if (tabName === 'away-teams') {
         loadAwayTeams();
     } else if (tabName === 'games') {
-        loadGames();
+        // Load away teams first to populate dropdown, then load games
+        loadAwayTeams().then(() => {
+            updateGamesDropdown();
+            loadGames();
+        });
     }
 }
 
@@ -192,6 +196,8 @@ async function loadAwayTeams() {
         
         awayTeams = await response.json();
         renderAwayTeams();
+        // Update games dropdown if we're on the games tab
+        updateGamesDropdown();
     } catch (error) {
         console.error('Load away teams error:', error);
         showMessage('awayTeamsMessage', 'Error loading away teams', 'error');
@@ -367,8 +373,8 @@ async function loadGames() {
         
         games = await response.json();
         renderGames();
+        // Update dropdown when games are loaded (away teams should already be loaded)
         updateGamesDropdown();
-        updateAttendingPlayersCheckboxes();
     } catch (error) {
         console.error('Load games error:', error);
         showMessage('gamesMessage', 'Error loading games', 'error');
@@ -379,8 +385,6 @@ async function createGame() {
     try {
         const gameName = document.getElementById('newGameName').value.trim();
         const awayTeamId = document.getElementById('newGameAwayTeam').value;
-        const checkboxes = document.querySelectorAll('#attendingPlayersCheckboxes input[type="checkbox"]:checked');
-        const attendingPlayerIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
         if (!awayTeamId) {
             showMessage('gamesMessage', 'Please select an away team', 'error');
@@ -392,7 +396,7 @@ async function createGame() {
             body: JSON.stringify({
                 game_name: gameName || null,
                 away_team_id: parseInt(awayTeamId),
-                attending_home_player_ids: attendingPlayerIds
+                attending_home_player_ids: [] // Empty array - will be set when in the game
             })
         });
 
@@ -401,8 +405,6 @@ async function createGame() {
         if (response.ok) {
             document.getElementById('newGameName').value = '';
             document.getElementById('newGameAwayTeam').value = '';
-            // Uncheck all checkboxes
-            document.querySelectorAll('#attendingPlayersCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
             showMessage('gamesMessage', 'Game created successfully!', 'success');
             await loadGames();
         } else {
@@ -417,7 +419,18 @@ async function createGame() {
 
 function updateGamesDropdown() {
     const select = document.getElementById('newGameAwayTeam');
+    if (!select) return; // Element might not exist if not on games tab
+    
     select.innerHTML = '<option value="">Select away team</option>';
+    
+    if (!awayTeams || awayTeams.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No away teams available - create one in Away Teams tab';
+        option.disabled = true;
+        select.appendChild(option);
+        return;
+    }
     
     awayTeams.forEach(team => {
         const option = document.createElement('option');
@@ -427,20 +440,7 @@ function updateGamesDropdown() {
     });
 }
 
-function updateAttendingPlayersCheckboxes() {
-    const container = document.getElementById('attendingPlayersCheckboxes');
-    if (!homeTeam || !homeTeam.players || homeTeam.players.length === 0) {
-        container.innerHTML = '<p style="color: #7f8c8d; padding: 10px;">No home team players available. Add players in the Home Team section first.</p>';
-        return;
-    }
-
-    container.innerHTML = homeTeam.players.map(player => `
-        <div class="checkbox-item">
-            <input type="checkbox" id="player_${player.id}" value="${player.id}">
-            <label for="player_${player.id}">#${player.player_number} ${player.player_name}</label>
-        </div>
-    `).join('');
-}
+// Removed updateAttendingPlayersCheckboxes - attending players are now selected in the game view
 
 function renderGames() {
     const list = document.getElementById('gamesList');
