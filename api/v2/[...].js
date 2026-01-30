@@ -107,7 +107,12 @@ module.exports = async function handler(req, res) {
                 const route = getRoute(req);
                 const method = req.method;
                 
-                console.log('V2 API Request:', { url: req.url, route, method });
+                console.log('V2 API Request:', { url: req.url, route, method, rawUrl: req.url });
+                
+                // Early check for away-teams routes to ensure they're handled
+                if (route && (route.startsWith('away-teams') || req.url.includes('away-teams'))) {
+                    console.log('Early away-teams route detection:', { route, method, url: req.url });
+                }
 
             // Route: /api/v2/home-team
             if (route === 'home-team') {
