@@ -24,25 +24,29 @@ function authenticateToken(req, res, next) {
 // Extract the route from the URL
 function getRoute(req) {
     // Vercel catch-all pattern: /api/v2/[...].js
-    // req.url will be something like: /api/v2/home-team or /home-team
-    // We need to handle both cases
+    // For /api/v2/home-team/players, req.url might be:
+    // - /api/v2/home-team/players (full path)
+    // - /home-team/players (relative to the function)
+    // - home-team/players (just the segments)
     let url = req.url || '';
     
     // Remove query string if present
     url = url.split('?')[0];
     
-    // If it starts with /api/v2/, extract the rest
-    if (url.startsWith('/api/v2/')) {
-        return url.replace('/api/v2/', '');
+    // Remove leading slashes
+    url = url.replace(/^\/+/, '');
+    
+    // If it starts with api/v2/, remove that prefix
+    if (url.startsWith('api/v2/')) {
+        url = url.replace('api/v2/', '');
     }
-    // If it starts with /v2/, extract the rest
-    if (url.startsWith('/v2/')) {
-        return url.replace('/v2/', '');
+    // If it starts with v2/, remove that prefix
+    else if (url.startsWith('v2/')) {
+        url = url.replace('v2/', '');
     }
-    // If it starts with /, it's already the route
-    if (url.startsWith('/')) {
-        return url.substring(1);
-    }
+    
+    // Remove trailing slashes
+    url = url.replace(/\/+$/, '');
     
     return url;
 }
@@ -124,11 +128,16 @@ module.exports = async function handler(req, res) {
             }
 
             // Route: /api/v2/home-team/players
-            if (route.startsWith('home-team/players')) {
+            // Handle both exact match and with ID: home-team/players or home-team/players/123
+            if (route === 'home-team/players' || route.startsWith('home-team/players/') || route.startsWith('home-team/players')) {
                 if (method === 'POST') {
                     // Add home team player
                     const userId = req.user.userId;
                     const { player_name, player_number } = req.body;
+
+                    if (!player_name || !player_number) {
+                        return res.status(400).json({ error: 'Player name and number are required' });
+                    }
 
                     // Get home team
                     const teamResult = await query('SELECT id FROM home_teams WHERE user_id = $1', [userId]);
@@ -138,36 +147,56 @@ module.exports = async function handler(req, res) {
 
                     const homeTeamId = teamResult.rows[0].id;
 
-                    const result = await query(
-                        'INSERT INTO home_team_players (home_team_id, player_name, player_number) VALUES ($1, $2, $3) RETURNING *',
-                        [homeTeamId, player_name, player_number]
-                    );
+                    try {
+                        const result = await query(
+                            'INSERT INTO home_team_players (home_team_id, player_name, player_number) VALUES ($1, $2, $3) RETURNING *',
+                            [homeTeamId, player_name, parseInt(player_number)]
+                        );
 
-                    return res.status(201).json(result.rows[0]);
+                        return res.status(201).json(result.rows[0]);
+                    } catch (dbError) {
+                        if (dbError.code === '23505') { // Unique constraint violation
+                            return res.status(400).json({ error: 'Player number already exists' });
+                        }
+                        throw dbError;
+                    }
                 } else if (method === 'DELETE') {
-                    // Delete home team player
+                    // Delete home team player - route will be like home-team/players/123
                     const userId = req.user.userId;
-                    const playerId = req.url.split('/').pop(); // Get ID from URL
+                    const parts = route.split('/');
+                    const playerId = parts[parts.length - 1]; // Get ID from last part of route
+
+                    if (!playerId || isNaN(playerId)) {
+                        return res.status(400).json({ error: 'Invalid player ID' });
+                    }
 
                     // Verify player belongs to user's home team
                     const verifyResult = await query(
                         `SELECT htp.id FROM home_team_players htp
                          JOIN home_teams ht ON htp.home_team_id = ht.id
                          WHERE htp.id = $1 AND ht.user_id = $2`,
-                        [playerId, userId]
+                        [parseInt(playerId), userId]
                     );
 
                     if (verifyResult.rows.length === 0) {
                         return res.status(404).json({ error: 'Player not found' });
                     }
 
-                    await query('DELETE FROM home_team_players WHERE id = $1', [playerId]);
+                    await query('DELETE FROM home_team_players WHERE id = $1', [parseInt(playerId)]);
                     return res.json({ message: 'Player deleted' });
+                } else {
+                    return res.status(405).json({ error: 'Method not allowed' });
                 }
             }
 
-            // If no route matched
-            return res.status(404).json({ error: 'Route not found', route, method });
+            // If no route matched, return helpful error
+            console.error('Route not matched:', { route, method, url: req.url });
+            return res.status(404).json({ 
+                error: 'Route not found', 
+                route, 
+                method,
+                availableRoutes: ['home-team', 'home-team/players']
+            });
         } catch (error) {
             console.error('V2 API error:', error);
             if (error.code === '23505') { // Unique constraint violation
