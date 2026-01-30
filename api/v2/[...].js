@@ -81,13 +81,24 @@ module.exports = async function handler(req, res) {
         });
     }
     
-    // Parse request body if it exists (for POST/PUT requests)
+    // Vercel serverless functions automatically parse JSON bodies
+    // But we need to ensure it's an object
     if ((req.method === 'POST' || req.method === 'PUT') && typeof req.body === 'string') {
         try {
             req.body = JSON.parse(req.body);
         } catch (e) {
-            // Body might already be parsed or empty
+            console.error('Error parsing request body:', e);
+            req.body = {};
         }
+    }
+    
+    // Log request for debugging
+    if (req.method === 'PUT' && req.url && req.url.includes('away-teams')) {
+        console.log('PUT away-teams request:', {
+            url: req.url,
+            body: req.body,
+            bodyType: typeof req.body
+        });
     }
 
         // Authenticate (except for health checks)
@@ -273,11 +284,17 @@ module.exports = async function handler(req, res) {
                     
                     if (method === 'PUT') {
                         const userId = req.user.userId;
-                        const { team_name, team_color } = req.body;
+                        const { team_name, team_color } = req.body || {};
+
+                        if (!team_name) {
+                            return res.status(400).json({ error: 'Team name is required' });
+                        }
+
+                        console.log('Updating away team:', { teamId, userId, team_name, team_color, body: req.body });
 
                         const result = await query(
                             'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-                            [team_name, team_color, parseInt(teamId), userId]
+                            [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
                         );
 
                         if (result.rows.length === 0) {

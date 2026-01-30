@@ -454,12 +454,25 @@ async function updateAwayTeam() {
             document.getElementById('awayTeamSelector').value = selectedAwayTeamId;
             selectAwayTeam();
         } else {
-            const error = await response.json();
-            showMessage('awayTeamsMessage', error.error || 'Error updating team', 'error');
+            // Try to parse error response, but handle non-JSON gracefully
+            let errorMessage = 'Error updating team';
+            try {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const error = await response.json();
+                    errorMessage = error.error || errorMessage;
+                } else {
+                    const text = await response.text();
+                    errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+                }
+            } catch (parseError) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            showMessage('awayTeamsMessage', errorMessage, 'error');
         }
     } catch (error) {
         console.error('Update away team error:', error);
-        showMessage('awayTeamsMessage', 'Error updating team', 'error');
+        showMessage('awayTeamsMessage', `Error updating team: ${error.message}`, 'error');
     }
 }
 
