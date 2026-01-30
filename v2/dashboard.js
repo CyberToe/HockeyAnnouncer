@@ -437,15 +437,38 @@ async function updateAwayTeam() {
             return;
         }
         
-        const response = await apiCall(`/away-teams/${selectedAwayTeamId}`, {
+        const endpoint = `/away-teams/${selectedAwayTeamId}`;
+        const fullUrl = `${API_BASE_URL}/api/v2${endpoint}`;
+        const requestBody = {
+            team_name: teamName,
+            team_color: teamColor
+        };
+        
+        console.log('=== UPDATE AWAY TEAM REQUEST ===');
+        console.log('Endpoint:', endpoint);
+        console.log('Full URL:', fullUrl);
+        console.log('Method: PUT');
+        console.log('Team ID:', selectedAwayTeamId);
+        console.log('Request Body:', requestBody);
+        console.log('API Base URL:', API_BASE_URL);
+        
+        const response = await apiCall(endpoint, {
             method: 'PUT',
-            body: JSON.stringify({
-                team_name: teamName,
-                team_color: teamColor
-            })
+            body: JSON.stringify(requestBody)
         });
         
-        if (!response) return;
+        console.log('Response received:', {
+            ok: response?.ok,
+            status: response?.status,
+            statusText: response?.statusText,
+            url: response?.url,
+            headers: Object.fromEntries(response?.headers?.entries() || [])
+        });
+        
+        if (!response) {
+            console.error('No response received from apiCall');
+            return;
+        }
         
         if (response.ok) {
             showMessage('awayTeamsMessage', 'Team updated successfully!', 'success');
@@ -456,18 +479,32 @@ async function updateAwayTeam() {
         } else {
             // Try to parse error response, but handle non-JSON gracefully
             let errorMessage = 'Error updating team';
+            let errorDetails = null;
             try {
                 const contentType = response.headers.get('content-type');
+                console.log('Error response content-type:', contentType);
+                console.log('Error response status:', response.status, response.statusText);
+                
                 if (contentType && contentType.includes('application/json')) {
-                    const error = await response.json();
-                    errorMessage = error.error || errorMessage;
+                    errorDetails = await response.json();
+                    errorMessage = errorDetails.error || errorMessage;
+                    console.log('Error JSON:', errorDetails);
                 } else {
                     const text = await response.text();
                     errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+                    console.log('Error text:', text);
                 }
             } catch (parseError) {
                 errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                console.error('Error parsing error response:', parseError);
             }
+            console.error('=== UPDATE AWAY TEAM ERROR ===', {
+                status: response.status,
+                statusText: response.statusText,
+                errorMessage,
+                errorDetails,
+                responseUrl: response.url
+            });
             showMessage('awayTeamsMessage', errorMessage, 'error');
         }
     } catch (error) {
