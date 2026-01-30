@@ -95,27 +95,36 @@ module.exports = async function handler(req, res) {
     
     // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
     // This handles cases where Vercel's catch-all routing might not work correctly
+    // Also handle POST with _method=PUT/DELETE workaround
     const rawUrl = req.url || '';
-    if ((req.method === 'PUT' || req.method === 'DELETE') && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
+    const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
+    const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
+    if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
         // Extract team ID from URL pattern: /api/v2/away-teams/123 or away-teams/123
-        const match = rawUrl.match(/away-teams\/(\d+)/);
-        if (match) {
-            const teamId = match[1];
-            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, url: rawUrl });
-            
-            // Authenticate first
-            const authHeader = req.headers['authorization'];
-            const token = authHeader && authHeader.split(' ')[1];
-            
-            if (!token) {
-                return res.status(401).json({ error: 'Access token required' });
-            }
-            
-            try {
-                const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
-                req.user = decoded;
+            const match = rawUrl.match(/away-teams\/(\d+)/);
+            if (match) {
+                const teamId = match[1];
+                const actualMethod = isPutWorkaround ? 'PUT' : (isDeleteWorkaround ? 'DELETE' : req.method);
+                console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrl, isPutWorkaround, isDeleteWorkaround });
                 
-                if (req.method === 'PUT') {
+                // Authenticate first
+                const authHeader = req.headers['authorization'];
+                const token = authHeader && authHeader.split(' ')[1];
+                
+                if (!token) {
+                    return res.status(401).json({ error: 'Access token required' });
+                }
+                
+                try {
+                    const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
+                    req.user = decoded;
+                    
+                    // Remove _method from body if present
+                    if (req.body && req.body._method) {
+                        delete req.body._method;
+                    }
+                    
+                    if (actualMethod === 'PUT' || isPutWorkaround) {
                     const userId = req.user.userId;
                     const { team_name, team_color } = req.body || {};
 
@@ -133,7 +142,7 @@ module.exports = async function handler(req, res) {
                     }
 
                     return res.json(result.rows[0]);
-                } else if (req.method === 'DELETE') {
+                } else if (actualMethod === 'DELETE' || isDeleteWorkaround) {
                     const userId = req.user.userId;
 
                     const result = await query(
@@ -373,7 +382,11 @@ module.exports = async function handler(req, res) {
                         }
 
                         return res.json(result.rows[0]);
-                    } else if (method === 'DELETE') {
+                    } else if (isDeleteMethod) {
+                        // Remove _method from body if present
+                        if (req.body && req.body._method) {
+                            delete req.body._method;
+                        }
                         const userId = req.user.userId;
 
                         const result = await query(

@@ -456,9 +456,11 @@ async function updateAwayTeam() {
             return;
         }
         
+        // Use POST with _method=PUT workaround since Vercel catch-all doesn't route PUT with IDs correctly
         const endpoint = `/away-teams/${selectedAwayTeamId}`;
         const fullUrl = `${API_BASE_URL}/api/v2${endpoint}`;
         const requestBody = {
+            _method: 'PUT', // Workaround for Vercel routing issue
             team_name: teamName,
             team_color: teamColor
         };
@@ -466,13 +468,13 @@ async function updateAwayTeam() {
         console.log('=== UPDATE AWAY TEAM REQUEST ===');
         console.log('Endpoint:', endpoint);
         console.log('Full URL:', fullUrl);
-        console.log('Method: PUT');
+        console.log('Method: POST (with _method=PUT workaround)');
         console.log('Team ID:', selectedAwayTeamId);
         console.log('Request Body:', requestBody);
         console.log('API Base URL:', API_BASE_URL);
         
         const response = await apiCall(endpoint, {
-            method: 'PUT',
+            method: 'POST',
             body: JSON.stringify(requestBody)
         });
         
