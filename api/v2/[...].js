@@ -357,12 +357,18 @@ module.exports = async function handler(req, res) {
                 console.log('Away-teams route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
                 
                 if (parts.length === 2 && parts[0] === 'away-teams') {
-                    // away-teams/:id (PUT or DELETE)
+                    // away-teams/:id (PUT or DELETE, or POST with _method workaround)
                     const teamId = parts[1];
+                    const isPutMethod = method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT');
+                    const isDeleteMethod = method === 'DELETE' || (method === 'POST' && req.body && req.body._method === 'DELETE');
                     
-                    console.log('Processing away-teams/:id route:', { teamId, method, route, parts });
+                    console.log('Processing away-teams/:id route:', { teamId, method, isPutMethod, isDeleteMethod, route, parts, body: req.body });
                     
-                    if (method === 'PUT') {
+                    if (isPutMethod) {
+                        // Remove _method from body if present
+                        if (req.body && req.body._method) {
+                            delete req.body._method;
+                        }
                         const userId = req.user.userId;
                         const { team_name, team_color } = req.body || {};
 
