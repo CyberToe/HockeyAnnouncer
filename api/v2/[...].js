@@ -125,17 +125,17 @@ module.exports = async function handler(req, res) {
                     }
                     
                     if (actualMethod === 'PUT' || isPutWorkaround) {
-                    const userId = req.user.userId;
-                    const { team_name, team_color } = req.body || {};
+                        const userId = req.user.userId;
+                        const { team_name, team_color } = req.body || {};
 
-                    if (!team_name) {
-                        return res.status(400).json({ error: 'Team name is required' });
-                    }
+                        if (!team_name) {
+                            return res.status(400).json({ error: 'Team name is required' });
+                        }
 
-                    const result = await query(
-                        'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-                        [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
-                    );
+                        const result = await query(
+                            'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                            [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
+                        );
 
                     if (result.rows.length === 0) {
                         return res.status(404).json({ error: 'Away team not found' });
