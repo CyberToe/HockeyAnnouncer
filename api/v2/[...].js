@@ -604,16 +604,14 @@ module.exports = async function handler(req, res) {
                 }
             }
 
-            // Route: /api/v2/games/:id
-            // Check multiple ways to ensure we catch the route
-            if (route.startsWith('games/') || (req.url && req.url.includes('games/') && !req.url.includes('goals'))) {
+            // Route: /api/v2/games/:id and /api/v2/games/:id/goals
+            if (route.startsWith('games/')) {
                 const parts = route.split('/').filter(p => p);
                 console.log('Games route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
                 
-                // Handle games/:id (2 parts) or games/:id/... (3+ parts)
                 if (parts.length >= 2 && parts[0] === 'games') {
                     const gameId = parts[1];
-                    console.log('Processing games/:id route:', { gameId, method, route, parts, body: req.body });
+                    console.log('Processing games route:', { gameId, method, route, parts, body: req.body });
                     
                     // Handle GET or POST with _action='get' (workaround for Vercel routing)
                     const isGet = method === 'GET' || (method === 'POST' && req.body && req.body._action === 'get');
@@ -660,11 +658,7 @@ module.exports = async function handler(req, res) {
                         game.goals = goalsResult.rows;
 
                         return res.json(game);
-                    }
-                }
-                
-                // Handle POST with _action for games/:id (not games/:id/goals)
-                if (parts.length === 2 && parts[0] === 'games' && method === 'POST' && req.body && req.body._action === 'update-attending-players') {
+                    } else if (parts.length === 2 && method === 'POST' && req.body && req.body._action === 'update-attending-players') {
                         // Update attending players: POST /api/v2/games/:id with _action=update-attending-players
                         const userId = req.user.userId;
                         const { attending_home_player_ids } = req.body || {};
@@ -727,60 +721,58 @@ module.exports = async function handler(req, res) {
                         updatedGame.attending_home_players = playersResult.rows;
 
                         return res.json(updatedGame);
-                    }
-                } else if (parts.length === 4 && parts[0] === 'games' && parts[2] === 'goals') {
-                    // Route: /api/v2/games/:id/goals
-                    const gameId = parts[1];
-                    const goalId = parts[3];
-                    
-                    if (method === 'DELETE') {
-                        // Delete goal
-                        const userId = req.user.userId;
+                    } else if (parts.length === 4 && parts[2] === 'goals') {
+                        // Route: /api/v2/games/:id/goals/:goalId (DELETE)
+                        const goalId = parts[3];
+                        
+                        if (method === 'DELETE') {
+                            // Delete goal
+                            const userId = req.user.userId;
 
-                        // Verify goal belongs to user's game
-                        const verifyResult = await query(
-                            `SELECT g.id FROM goals g
-                             JOIN games gm ON g.game_id = gm.id
-                             WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
-                            [parseInt(goalId), parseInt(gameId), userId]
-                        );
+                            // Verify goal belongs to user's game
+                            const verifyResult = await query(
+                                `SELECT g.id FROM goals g
+                                 JOIN games gm ON g.game_id = gm.id
+                                 WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
+                                [parseInt(goalId), parseInt(gameId), userId]
+                            );
 
-                        if (verifyResult.rows.length === 0) {
-                            return res.status(404).json({ error: 'Goal not found' });
+                            if (verifyResult.rows.length === 0) {
+                                return res.status(404).json({ error: 'Goal not found' });
+                            }
+
+                            await query('DELETE FROM goals WHERE id = $1', [parseInt(goalId)]);
+                            return res.json({ message: 'Goal deleted' });
                         }
+                    } else if (parts.length === 3 && parts[2] === 'goals') {
+                        // Route: /api/v2/games/:id/goals (POST)
+                        const isPost = method === 'POST';
+                        const isPutWorkaround = method === 'POST' && req.body && req.body._action === 'PUT';
+                        
+                        if (isPost || isPutWorkaround) {
+                            // Record goal
+                            const userId = req.user.userId;
+                            const { team, scorer_id, assist1_id, assist2_id, period, time_remaining } = req.body || {};
 
-                        await query('DELETE FROM goals WHERE id = $1', [parseInt(goalId)]);
-                        return res.json({ message: 'Goal deleted' });
-                    }
-                } else if (parts.length === 3 && parts[0] === 'games' && parts[2] === 'goals') {
-                    // Route: /api/v2/games/:id/goals (POST) - Use POST with _action workaround
-                    const gameId = parts[1];
-                    const isPost = method === 'POST';
-                    const isPutWorkaround = method === 'POST' && req.body && req.body._action === 'PUT';
-                    
-                    if (isPost || isPutWorkaround) {
-                        // Record goal
-                        const userId = req.user.userId;
-                        const { team, scorer_id, assist1_id, assist2_id, period, time_remaining } = req.body || {};
+                            // Verify game belongs to user
+                            const gameResult = await query(
+                                'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+                                [parseInt(gameId), userId]
+                            );
 
-                        // Verify game belongs to user
-                        const gameResult = await query(
-                            'SELECT id FROM games WHERE id = $1 AND user_id = $2',
-                            [parseInt(gameId), userId]
-                        );
+                            if (gameResult.rows.length === 0) {
+                                return res.status(404).json({ error: 'Game not found' });
+                            }
 
-                        if (gameResult.rows.length === 0) {
-                            return res.status(404).json({ error: 'Game not found' });
+                            // Insert goal
+                            const result = await query(
+                                `INSERT INTO goals (game_id, team, scorer_id, assist1_id, assist2_id, period, time_remaining)
+                                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+                                [parseInt(gameId), team, scorer_id || null, assist1_id || null, assist2_id || null, period || null, time_remaining || null]
+                            );
+
+                            return res.status(201).json(result.rows[0]);
                         }
-
-                        // Insert goal
-                        const result = await query(
-                            `INSERT INTO goals (game_id, team, scorer_id, assist1_id, assist2_id, period, time_remaining)
-                             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-                            [parseInt(gameId), team, scorer_id || null, assist1_id || null, assist2_id || null, period || null, time_remaining || null]
-                        );
-
-                        return res.status(201).json(result.rows[0]);
                     }
                 }
             }
