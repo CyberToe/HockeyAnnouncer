@@ -393,13 +393,14 @@ async function recordGoal(event) {
         const announcementText = generateAnnouncement(goalData);
 
         // Save goal to database - try direct route first, then fallback
+        // Use field names that match database schema
         const goalData = {
             scoring_team: scoringTeam,
-            scorer_id: parseInt(scorerId),
+            scorer_player_id: parseInt(scorerId),
             scorer_is_home: scorerIsHome === 'true',
-            assist1_id: assist1 ? parseInt(assist1[0]) : null,
+            assist1_player_id: assist1 ? parseInt(assist1[0]) : null,
             assist1_is_home: assist1 ? assist1[1] === 'true' : null,
-            assist2_id: assist2 ? parseInt(assist2[0]) : null,
+            assist2_player_id: assist2 ? parseInt(assist2[0]) : null,
             assist2_is_home: assist2 ? assist2[1] === 'true' : null,
             period: period,
             time_remaining: timeRemaining,
