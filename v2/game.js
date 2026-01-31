@@ -193,8 +193,9 @@ async function saveAttendingPlayers() {
                         })
                     });
                     
-                    // If 404, try POST with _action workaround
+                    // If 404 or 405, try POST with _action workaround
                     if (!response || !response.ok) {
+                        console.log(`PUT failed (status: ${response?.status}), trying POST fallback for player ${update.id}`);
                         response = await apiCall(`/home-team/players`, {
                             method: 'POST',
                             body: JSON.stringify({
@@ -203,6 +204,7 @@ async function saveAttendingPlayers() {
                                 player_number: update.player_number
                             })
                         });
+                        console.log(`POST fallback response for player ${update.id}:`, { ok: response?.ok, status: response?.status });
                     }
                     
                     if (response && response.ok) {

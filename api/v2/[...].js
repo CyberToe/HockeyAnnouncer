@@ -347,14 +347,22 @@ module.exports = async function handler(req, res) {
 
             // Route: /api/v2/home-team/players
             // Handle both exact match and with ID: home-team/players or home-team/players/123
-            if (route === 'home-team/players' || route.startsWith('home-team/players/') || route.startsWith('home-team/players')) {
+            if (route === 'home-team/players' || route.startsWith('home-team/players')) {
+                const parts = route.split('/').filter(p => p);
+                console.log('Home-team players route matched:', { route, parts, method, body: req.body });
+                
                 // Handle POST with _action='update' for updating player number (fallback workaround)
+                // This should be checked FIRST before other POST handlers
                 if (method === 'POST' && req.body && req.body._action === 'update' && req.body.id) {
                     const playerId = req.body.id;
                     const { player_number } = req.body;
                     const userId = req.user.userId;
                     
-                    console.log('Updating player number (fallback):', { playerId, player_number });
+                    console.log('Updating player number (POST fallback):', { playerId, player_number, userId });
+                    
+                    if (!player_number && player_number !== 0) {
+                        return res.status(400).json({ error: 'Player number is required' });
+                    }
                     
                     // Verify player belongs to user's home team
                     const verifyResult = await query(
@@ -375,51 +383,59 @@ module.exports = async function handler(req, res) {
                             [parseInt(player_number), parseInt(playerId)]
                         );
                         
+                        console.log('Player number updated successfully:', result.rows[0]);
                         return res.json(result.rows[0]);
                     } catch (dbError) {
+                        console.error('Database error updating player number:', dbError);
                         if (dbError.code === '23505') { // Unique constraint violation
                             return res.status(400).json({ error: 'Player number already exists' });
                         }
                         throw dbError;
                     }
-                } else if (method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT')) {
-                    // Update player number - extract ID from route
-                    const parts = route.split('/').filter(p => p);
-                    if (parts.length === 3 && parts[0] === 'home-team' && parts[1] === 'players') {
-                        const playerId = parts[2];
-                        const { player_number } = req.body || {};
-                        const userId = req.user.userId;
-                        
-                        console.log('Updating player number:', { playerId, player_number });
-                        
-                        // Verify player belongs to user's home team
-                        const verifyResult = await query(
-                            `SELECT htp.id FROM home_team_players htp
-                             JOIN home_teams ht ON htp.home_team_id = ht.id
-                             WHERE htp.id = $1 AND ht.user_id = $2`,
-                            [parseInt(playerId), userId]
+                } 
+                // Handle PUT or POST with _method=PUT for updating player number with ID in route
+                else if ((method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT')) && parts.length === 3 && parts[0] === 'home-team' && parts[1] === 'players') {
+                    const playerId = parts[2];
+                    const { player_number } = req.body || {};
+                    const userId = req.user.userId;
+                    
+                    console.log('Updating player number (PUT):', { playerId, player_number, userId });
+                    
+                    if (!player_number && player_number !== 0) {
+                        return res.status(400).json({ error: 'Player number is required' });
+                    }
+                    
+                    // Verify player belongs to user's home team
+                    const verifyResult = await query(
+                        `SELECT htp.id FROM home_team_players htp
+                         JOIN home_teams ht ON htp.home_team_id = ht.id
+                         WHERE htp.id = $1 AND ht.user_id = $2`,
+                        [parseInt(playerId), userId]
+                    );
+                    
+                    if (verifyResult.rows.length === 0) {
+                        return res.status(404).json({ error: 'Player not found' });
+                    }
+                    
+                    // Update player number
+                    try {
+                        const result = await query(
+                            'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
+                            [parseInt(player_number), parseInt(playerId)]
                         );
                         
-                        if (verifyResult.rows.length === 0) {
-                            return res.status(404).json({ error: 'Player not found' });
+                        console.log('Player number updated successfully:', result.rows[0]);
+                        return res.json(result.rows[0]);
+                    } catch (dbError) {
+                        console.error('Database error updating player number:', dbError);
+                        if (dbError.code === '23505') { // Unique constraint violation
+                            return res.status(400).json({ error: 'Player number already exists' });
                         }
-                        
-                        // Update player number
-                        try {
-                            const result = await query(
-                                'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
-                                [parseInt(player_number), parseInt(playerId)]
-                            );
-                            
-                            return res.json(result.rows[0]);
-                        } catch (dbError) {
-                            if (dbError.code === '23505') { // Unique constraint violation
-                                return res.status(400).json({ error: 'Player number already exists' });
-                            }
-                            throw dbError;
-                        }
+                        throw dbError;
                     }
-                } else if (method === 'POST') {
+                } 
+                // Handle POST for adding new player (only if not updating)
+                else if (method === 'POST' && (!req.body || !req.body._action)) {
                     // Add home team player
                     const userId = req.user.userId;
                     const { player_name, player_number } = req.body;
