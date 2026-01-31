@@ -44,6 +44,47 @@ module.exports = async function handler(req, res) {
             const method = req.method;
 
             if (method === 'POST') {
+                // Check if this is an update request (workaround for PUT routing issues)
+                if (req.body && req.body._action === 'update' && req.body.id) {
+                    const playerId = req.body.id;
+                    const { player_number } = req.body;
+                    
+                    console.log('Updating player number (dedicated function):', { playerId, player_number, userId });
+                    
+                    if (player_number === undefined || player_number === null) {
+                        return res.status(400).json({ error: 'Player number is required' });
+                    }
+                    
+                    // Verify player belongs to user's home team
+                    const verifyResult = await query(
+                        `SELECT htp.id FROM home_team_players htp
+                         JOIN home_teams ht ON htp.home_team_id = ht.id
+                         WHERE htp.id = $1 AND ht.user_id = $2`,
+                        [parseInt(playerId), userId]
+                    );
+                    
+                    if (verifyResult.rows.length === 0) {
+                        return res.status(404).json({ error: 'Player not found' });
+                    }
+                    
+                    // Update player number
+                    try {
+                        const result = await query(
+                            'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
+                            [parseInt(player_number), parseInt(playerId)]
+                        );
+                        
+                        console.log('Player number updated successfully:', result.rows[0]);
+                        return res.json(result.rows[0]);
+                    } catch (dbError) {
+                        console.error('Database error updating player number:', dbError);
+                        if (dbError.code === '23505') { // Unique constraint violation
+                            return res.status(400).json({ error: 'Player number already exists' });
+                        }
+                        throw dbError;
+                    }
+                }
+                
                 // Add home team player
                 const { player_name, player_number } = req.body;
 
