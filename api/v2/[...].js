@@ -612,7 +612,11 @@ module.exports = async function handler(req, res) {
                     console.log('Games record-goal handler (fallback):', { gameId, body: req.body });
                     const userId = req.user.userId;
                     const scoringTeam = req.body.scoring_team || req.body.team;
-                    const { scorer_id, scorer_is_home, assist1_id, assist1_is_home, assist2_id, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
+                    // Support both scorer_id/scorer_player_id and assist1_id/assist1_player_id for compatibility
+                    const scorerPlayerId = req.body.scorer_player_id || req.body.scorer_id;
+                    const assist1PlayerId = req.body.assist1_player_id || req.body.assist1_id;
+                    const assist2PlayerId = req.body.assist2_player_id || req.body.assist2_id;
+                    const { scorer_is_home, assist1_is_home, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
                     
                     // Remove _action and game_id from body
                     delete req.body._action;
@@ -636,11 +640,11 @@ module.exports = async function handler(req, res) {
                         [
                             parseInt(gameId), 
                             scoringTeam, 
-                            scorer_id || null, 
+                            scorerPlayerId || null, 
                             scorer_is_home !== undefined ? scorer_is_home : true,
-                            assist1_id || null, 
+                            assist1PlayerId || null, 
                             assist1_is_home || null,
-                            assist2_id || null, 
+                            assist2PlayerId || null, 
                             assist2_is_home || null,
                             period || null, 
                             time_remaining || null,
@@ -1043,9 +1047,13 @@ module.exports = async function handler(req, res) {
                             const userId = req.user.userId;
                             // Support both 'team' and 'scoring_team' for compatibility
                             const scoringTeam = req.body.scoring_team || req.body.team;
-                            const { scorer_id, scorer_is_home, assist1_id, assist1_is_home, assist2_id, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
+                            // Support both scorer_id/scorer_player_id and assist1_id/assist1_player_id for compatibility
+                            const scorerPlayerId = req.body.scorer_player_id || req.body.scorer_id;
+                            const assist1PlayerId = req.body.assist1_player_id || req.body.assist1_id;
+                            const assist2PlayerId = req.body.assist2_player_id || req.body.assist2_id;
+                            const { scorer_is_home, assist1_is_home, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
                             
-                            console.log('Recording goal:', { gameId, scoringTeam, scorer_id, scorer_is_home, period, time_remaining });
+                            console.log('Recording goal:', { gameId, scoringTeam, scorerPlayerId, scorer_is_home, period, time_remaining });
 
                             // Verify game belongs to user
                             const gameResult = await query(
@@ -1064,11 +1072,11 @@ module.exports = async function handler(req, res) {
                                 [
                                     parseInt(gameId), 
                                     scoringTeam, 
-                                    scorer_id || null, 
+                                    scorerPlayerId || null, 
                                     scorer_is_home !== undefined ? scorer_is_home : true,
-                                    assist1_id || null, 
+                                    assist1PlayerId || null, 
                                     assist1_is_home || null,
-                                    assist2_id || null, 
+                                    assist2PlayerId || null, 
                                     assist2_is_home || null,
                                     period || null, 
                                     time_remaining || null,
