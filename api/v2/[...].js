@@ -845,6 +845,36 @@ module.exports = async function handler(req, res) {
 
                     return res.json(game);
                 }
+                // Handle POST with _action='update-goal' (fallback workaround for updating goal announcement)
+                else if (method === 'POST' && req.body && req.body._action === 'update-goal' && req.body.game_id && req.body.goal_id) {
+                    const gameId = req.body.game_id;
+                    const goalId = req.body.goal_id;
+                    const { announcement_text } = req.body;
+                    const userId = req.user.userId;
+                    
+                    console.log('Updating goal announcement (fallback):', { gameId, goalId, announcement_text });
+                    
+                    // Verify goal belongs to user's game
+                    const verifyResult = await query(
+                        `SELECT g.id FROM goals g
+                         JOIN games gm ON g.game_id = gm.id
+                         WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
+                        [parseInt(goalId), parseInt(gameId), userId]
+                    );
+
+                    if (verifyResult.rows.length === 0) {
+                        return res.status(404).json({ error: 'Goal not found' });
+                    }
+
+                    // Update announcement text
+                    const result = await query(
+                        'UPDATE goals SET announcement_text = $1 WHERE id = $2 RETURNING *',
+                        [announcement_text, parseInt(goalId)]
+                    );
+                    
+                    console.log('Goal announcement updated successfully:', { goalId });
+                    return res.json(result.rows[0]);
+                }
                 
                 if (method === 'GET') {
                     // Get all games
