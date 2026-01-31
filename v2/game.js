@@ -177,9 +177,10 @@ async function saveAttendingPlayers() {
             })
         });
         
-        // If 404, try the workaround pattern (POST to /games with id in body)
-        if (!response || response.status === 404) {
-            console.log('First attempt failed, trying workaround pattern');
+        // Check if first attempt failed
+        if (!response || !response.ok) {
+            console.log('First attempt failed (status:', response?.status, '), trying workaround pattern');
+            // Try the workaround pattern (POST to /games with id in body)
             response = await apiCall(`/games`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -188,10 +189,11 @@ async function saveAttendingPlayers() {
                     attending_home_player_ids: attendingPlayerIds
                 })
             });
+            console.log('Fallback response:', { ok: response?.ok, status: response?.status });
         }
 
         if (!response) {
-            console.error('No response from saveAttendingPlayers');
+            console.error('No response from saveAttendingPlayers after both attempts');
             showMessage('attendingMessage', 'Error: No response from server', 'error');
             return;
         }
@@ -214,7 +216,7 @@ async function saveAttendingPlayers() {
                 errorMessage = error.error || errorMessage;
                 console.error('Save attending players error:', error);
             } catch (e) {
-                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`;
                 console.error('Save attending players error (non-JSON):', errorMessage);
             }
             showMessage('attendingMessage', errorMessage, 'error');
