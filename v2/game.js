@@ -153,9 +153,10 @@ function renderAttendingPlayers() {
         // Check if player is attending, or default to checked if no players are attending yet
         const isChecked = defaultToAll || attendingPlayerIds.includes(player.id);
         return `
-            <div class="checkbox-item">
+            <div class="checkbox-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
                 <input type="checkbox" id="attending_${player.id}" value="${player.id}" ${isChecked ? 'checked' : ''}>
-                <label for="attending_${player.id}">#${player.player_number} ${player.player_name}</label>
+                <label for="attending_${player.id}" style="flex: 1; margin: 0;">${player.player_name}</label>
+                <input type="number" id="number_${player.id}" value="${player.player_number}" min="1" max="99" style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
             </div>
         `;
     }).join('');
@@ -166,6 +167,60 @@ async function saveAttendingPlayers() {
     try {
         const checkboxes = document.querySelectorAll('#attendingPlayersCheckboxes input[type="checkbox"]:checked');
         const attendingPlayerIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        // Get all player number updates
+        const playerUpdates = [];
+        homeTeam.players.forEach(player => {
+            const numberInput = document.getElementById(`number_${player.id}`);
+            if (numberInput && parseInt(numberInput.value) !== player.player_number) {
+                playerUpdates.push({
+                    id: player.id,
+                    player_number: parseInt(numberInput.value)
+                });
+            }
+        });
+        
+        // Update player numbers first
+        if (playerUpdates.length > 0) {
+            console.log('Updating player numbers:', playerUpdates);
+            for (const update of playerUpdates) {
+                try {
+                    // Use PUT to update player number - try direct route first, then fallback
+                    let response = await apiCall(`/home-team/players/${update.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            player_number: update.player_number
+                        })
+                    });
+                    
+                    // If 404, try POST with _action workaround
+                    if (!response || !response.ok) {
+                        response = await apiCall(`/home-team/players`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                _action: 'update',
+                                id: update.id,
+                                player_number: update.player_number
+                            })
+                        });
+                    }
+                    
+                    if (response && response.ok) {
+                        console.log(`Updated player ${update.id} number to ${update.player_number}`);
+                    } else {
+                        console.error(`Failed to update player ${update.id} number`);
+                    }
+                } catch (error) {
+                    console.error(`Error updating player ${update.id} number:`, error);
+                }
+            }
+            
+            // Reload home team to get updated player numbers
+            const homeTeamResponse = await apiCall('/home-team');
+            if (homeTeamResponse && homeTeamResponse.ok) {
+                homeTeam = await homeTeamResponse.json();
+            }
+        }
         
         console.log('Saving attending players:', { gameId, attendingPlayerIds });
 
