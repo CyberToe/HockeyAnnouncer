@@ -499,53 +499,105 @@ async function recordGoal(event) {
         const assist1 = assist1Data ? assist1Data.split('|') : null;
         const assist2 = assist2Data ? assist2Data.split('|') : null;
 
-        // Get player names for announcement
+        // Get player names and numbers for announcement - use homeTeam.players to get updated numbers
         let scorerName, scorerNumber;
-        let assist1Name = null, assist2Name = null;
+        let assist1Name = null, assist1Number = null;
+        let assist2Name = null, assist2Number = null;
 
         if (scorerIsHome === 'true') {
-            const player = currentGame.attending_home_players.find(p => p.id === parseInt(scorerId));
-            scorerName = player.player_name;
-            scorerNumber = player.player_number;
+            // Use homeTeam.players to get updated player numbers
+            const player = homeTeam?.players?.find(p => p.id === parseInt(scorerId));
+            if (player) {
+                scorerName = player.player_name;
+                scorerNumber = player.player_number;
+            } else {
+                // Fallback to attending players if not found in homeTeam
+                const player = currentGame.attending_home_players.find(p => p.id === parseInt(scorerId));
+                if (player) {
+                    scorerName = player.player_name;
+                    scorerNumber = player.player_number;
+                }
+            }
         } else {
             const player = awayTeam.players.find(p => p.id === parseInt(scorerId));
-            scorerName = player.player_name;
-            scorerNumber = player.player_number;
+            if (player) {
+                scorerName = player.player_name;
+                scorerNumber = player.player_number;
+            }
         }
 
         if (assist1) {
             const assist1IsHome = assist1[1] === 'true';
             if (assist1IsHome) {
-                const player = currentGame.attending_home_players.find(p => p.id === parseInt(assist1[0]));
-                assist1Name = player ? player.player_name : null;
+                // Use homeTeam.players to get updated player numbers
+                const player = homeTeam?.players?.find(p => p.id === parseInt(assist1[0]));
+                if (player) {
+                    assist1Name = player.player_name;
+                    assist1Number = player.player_number;
+                } else {
+                    // Fallback to attending players
+                    const player = currentGame.attending_home_players.find(p => p.id === parseInt(assist1[0]));
+                    if (player) {
+                        assist1Name = player.player_name;
+                        assist1Number = player.player_number;
+                    }
+                }
             } else {
                 const player = awayTeam.players.find(p => p.id === parseInt(assist1[0]));
-                assist1Name = player ? player.player_name : null;
+                if (player) {
+                    assist1Name = player.player_name;
+                    assist1Number = player.player_number;
+                }
             }
         }
 
         if (assist2) {
             const assist2IsHome = assist2[1] === 'true';
             if (assist2IsHome) {
-                const player = currentGame.attending_home_players.find(p => p.id === parseInt(assist2[0]));
-                assist2Name = player ? player.player_name : null;
+                // Use homeTeam.players to get updated player numbers
+                const player = homeTeam?.players?.find(p => p.id === parseInt(assist2[0]));
+                if (player) {
+                    assist2Name = player.player_name;
+                    assist2Number = player.player_number;
+                } else {
+                    // Fallback to attending players
+                    const player = currentGame.attending_home_players.find(p => p.id === parseInt(assist2[0]));
+                    if (player) {
+                        assist2Name = player.player_name;
+                        assist2Number = player.player_number;
+                    }
+                }
             } else {
                 const player = awayTeam.players.find(p => p.id === parseInt(assist2[0]));
-                assist2Name = player ? player.player_name : null;
+                if (player) {
+                    assist2Name = player.player_name;
+                    assist2Number = player.player_number;
+                }
             }
         }
 
-        // Generate announcement text
-        const announcementData = {
-            scoring_team: scoringTeam,
-            scorer_name: scorerName,
-            scorer_number: scorerNumber,
-            assist1_name: assist1Name,
-            assist2_name: assist2Name,
-            period: period,
-            time_remaining: timeRemaining
-        };
-        const announcementText = generateAnnouncement(announcementData);
+        // Check if user has manually edited the announcement text
+        const manualAnnouncement = document.getElementById('announcementText');
+        let announcementText;
+        
+        if (manualAnnouncement && manualAnnouncement.value.trim() && manualAnnouncement.dataset.manualEdit === 'true') {
+            // Use manually edited text
+            announcementText = manualAnnouncement.value.trim();
+        } else {
+            // Generate announcement text
+            const announcementData = {
+                scoring_team: scoringTeam,
+                scorer_name: scorerName,
+                scorer_number: scorerNumber,
+                assist1_name: assist1Name,
+                assist1_number: assist1Number,
+                assist2_name: assist2Name,
+                assist2_number: assist2Number,
+                period: period,
+                time_remaining: timeRemaining
+            };
+            announcementText = generateAnnouncement(announcementData);
+        }
 
         // Save goal to database - try direct route first, then fallback
         // Use field names that match database schema
