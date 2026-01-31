@@ -486,7 +486,7 @@ async function playAnnouncement(announcementText) {
             },
             body: JSON.stringify({
                 text: announcementText,
-                voice: 'ErXwobaYiN019PkySvjV' // Antoni voice
+                voice: selectedVoice
             })
         });
 
