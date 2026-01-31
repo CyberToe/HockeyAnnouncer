@@ -996,7 +996,11 @@ module.exports = async function handler(req, res) {
                         if (isPost || isPutWorkaround) {
                             // Record goal
                             const userId = req.user.userId;
-                            const { team, scorer_id, assist1_id, assist2_id, period, time_remaining } = req.body || {};
+                            // Support both 'team' and 'scoring_team' for compatibility
+                            const scoringTeam = req.body.scoring_team || req.body.team;
+                            const { scorer_id, scorer_is_home, assist1_id, assist1_is_home, assist2_id, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
+                            
+                            console.log('Recording goal:', { gameId, scoringTeam, scorer_id, scorer_is_home, period, time_remaining });
 
                             // Verify game belongs to user
                             const gameResult = await query(
@@ -1008,11 +1012,23 @@ module.exports = async function handler(req, res) {
                                 return res.status(404).json({ error: 'Game not found' });
                             }
 
-                            // Insert goal
+                            // Insert goal - match database schema
                             const result = await query(
-                                `INSERT INTO goals (game_id, team, scorer_id, assist1_id, assist2_id, period, time_remaining)
-                                 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-                                [parseInt(gameId), team, scorer_id || null, assist1_id || null, assist2_id || null, period || null, time_remaining || null]
+                                `INSERT INTO goals (game_id, scoring_team, scorer_player_id, scorer_is_home, assist1_player_id, assist1_is_home, assist2_player_id, assist2_is_home, period, time_remaining, announcement_text)
+                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+                                [
+                                    parseInt(gameId), 
+                                    scoringTeam, 
+                                    scorer_id || null, 
+                                    scorer_is_home !== undefined ? scorer_is_home : true,
+                                    assist1_id || null, 
+                                    assist1_is_home || null,
+                                    assist2_id || null, 
+                                    assist2_is_home || null,
+                                    period || null, 
+                                    time_remaining || null,
+                                    announcement_text || null
+                                ]
                             );
 
                             return res.status(201).json(result.rows[0]);

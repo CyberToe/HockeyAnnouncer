@@ -392,22 +392,45 @@ async function recordGoal(event) {
         };
         const announcementText = generateAnnouncement(goalData);
 
-        // Save goal to database
-        const response = await apiCall(`/games/${gameId}/goals`, {
+        // Save goal to database - try direct route first, then fallback
+        let response = await apiCall(`/games/${gameId}/goals`, {
             method: 'POST',
             body: JSON.stringify({
-                scoring_team: scoringTeam,
-                scorer_player_id: parseInt(scorerId),
+                team: scoringTeam,
+                scorer_id: parseInt(scorerId),
                 scorer_is_home: scorerIsHome === 'true',
-                assist1_player_id: assist1 ? parseInt(assist1[0]) : null,
+                assist1_id: assist1 ? parseInt(assist1[0]) : null,
                 assist1_is_home: assist1 ? assist1[1] === 'true' : null,
-                assist2_player_id: assist2 ? parseInt(assist2[0]) : null,
+                assist2_id: assist2 ? parseInt(assist2[0]) : null,
                 assist2_is_home: assist2 ? assist2[1] === 'true' : null,
                 period: period,
                 time_remaining: timeRemaining,
                 announcement_text: announcementText
             })
         });
+        
+        // If 404, try fallback pattern (POST to /games with game_id and _action in body)
+        if (!response || !response.ok) {
+            console.log('First goal save attempt failed (status:', response?.status, '), trying fallback pattern');
+            response = await apiCall(`/games`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    _action: 'record-goal',
+                    game_id: parseInt(gameId),
+                    team: scoringTeam,
+                    scorer_id: parseInt(scorerId),
+                    scorer_is_home: scorerIsHome === 'true',
+                    assist1_id: assist1 ? parseInt(assist1[0]) : null,
+                    assist1_is_home: assist1 ? assist1[1] === 'true' : null,
+                    assist2_id: assist2 ? parseInt(assist2[0]) : null,
+                    assist2_is_home: assist2 ? assist2[1] === 'true' : null,
+                    period: period,
+                    time_remaining: timeRemaining,
+                    announcement_text: announcementText
+                })
+            });
+            console.log('Fallback goal save response:', { ok: response?.ok, status: response?.status });
+        }
 
         if (!response) return;
 
@@ -421,8 +444,14 @@ async function recordGoal(event) {
             // Reload goals
             await loadGame();
         } else {
-            const error = await response.json();
-            showMessage('gameMessage', error.error || 'Error recording goal', 'error');
+            let errorMessage = 'Error recording goal';
+            try {
+                const error = await response.json();
+                errorMessage = error.error || errorMessage;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`;
+            }
+            showMessage('gameMessage', errorMessage, 'error');
         }
     } catch (error) {
         console.error('Record goal error:', error);
