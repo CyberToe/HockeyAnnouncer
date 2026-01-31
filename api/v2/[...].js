@@ -189,7 +189,7 @@ module.exports = async function handler(req, res) {
     // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
     // This handles cases where Vercel's catch-all routing might not work correctly
     // Also handle POST with _method=PUT/DELETE workaround
-    const rawUrl = req.url || '';
+    // Note: rawUrl was already defined above
     const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
     const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
     if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
