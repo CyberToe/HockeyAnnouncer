@@ -219,9 +219,10 @@ async function saveAttendingPlayers() {
             const homeTeamResponse = await apiCall('/home-team');
             if (homeTeamResponse && homeTeamResponse.ok) {
                 homeTeam = await homeTeamResponse.json();
-                // Also reload the game to update attending players with new numbers
-                await loadGame();
             }
+            
+            // Reload the game to get updated attending players with new numbers
+            await loadGame();
         }
         
         console.log('Saving attending players:', { gameId, attendingPlayerIds });
@@ -360,103 +361,8 @@ function updatePlayerDropdowns() {
             select.appendChild(option);
         });
     });
-    
-    // Update announcement text when dropdowns change
-    updateAnnouncementText();
 }
 
-function updateAnnouncementText() {
-    const announcementTextarea = document.getElementById('announcementText');
-    if (!announcementTextarea) return;
-    
-    // Only auto-update if user hasn't manually edited it
-    if (announcementTextarea.dataset.manualEdit === 'true') return;
-    
-    const scoringTeam = document.getElementById('scoringTeam')?.value;
-    const scorerData = document.getElementById('scorer')?.value;
-    const assist1Data = document.getElementById('assist1')?.value;
-    const assist2Data = document.getElementById('assist2')?.value;
-    const period = document.getElementById('period')?.value;
-    const timeRemaining = document.getElementById('timeRemaining')?.value;
-    
-    if (!scorerData || !scoringTeam || !period || !timeRemaining) {
-        announcementTextarea.value = '';
-        return;
-    }
-    
-    const [scorerId, scorerIsHome] = scorerData.split('|');
-    const assist1 = assist1Data ? assist1Data.split('|') : null;
-    const assist2 = assist2Data ? assist2Data.split('|') : null;
-    
-    // Get player names and numbers
-    let scorerName, scorerNumber;
-    let assist1Name = null, assist1Number = null;
-    let assist2Name = null, assist2Number = null;
-    
-    if (scorerIsHome === 'true') {
-        const player = homeTeam?.players?.find(p => p.id === parseInt(scorerId));
-        if (player) {
-            scorerName = player.player_name;
-            scorerNumber = player.player_number;
-        }
-    } else {
-        const player = awayTeam?.players?.find(p => p.id === parseInt(scorerId));
-        if (player) {
-            scorerName = player.player_name;
-            scorerNumber = player.player_number;
-        }
-    }
-    
-    if (assist1) {
-        const assist1IsHome = assist1[1] === 'true';
-        if (assist1IsHome) {
-            const player = homeTeam?.players?.find(p => p.id === parseInt(assist1[0]));
-            if (player) {
-                assist1Name = player.player_name;
-                assist1Number = player.player_number;
-            }
-        } else {
-            const player = awayTeam?.players?.find(p => p.id === parseInt(assist1[0]));
-            if (player) {
-                assist1Name = player.player_name;
-                assist1Number = player.player_number;
-            }
-        }
-    }
-    
-    if (assist2) {
-        const assist2IsHome = assist2[1] === 'true';
-        if (assist2IsHome) {
-            const player = homeTeam?.players?.find(p => p.id === parseInt(assist2[0]));
-            if (player) {
-                assist2Name = player.player_name;
-                assist2Number = player.player_number;
-            }
-        } else {
-            const player = awayTeam?.players?.find(p => p.id === parseInt(assist2[0]));
-            if (player) {
-                assist2Name = player.player_name;
-                assist2Number = player.player_number;
-            }
-        }
-    }
-    
-    if (!scorerName) return;
-    
-    const announcementData = {
-        scoring_team: scoringTeam,
-        scorer_name: scorerName,
-        scorer_number: scorerNumber,
-        assist1_name: assist1Name,
-        assist1_number: assist1Number,
-        assist2_name: assist2Name,
-        assist2_number: assist2Number,
-        period: period,
-        time_remaining: timeRemaining
-    };
-    
-    announcementTextarea.value = generateAnnouncement(announcementData);
-}
 
 function generateAnnouncement(goal) {
     let announcement = `Goal for the ${goal.scoring_team === 'home' ? homeTeam.team_name : awayTeam.team_name}! by number ${goal.scorer_number}, ${goal.scorer_name}`;
@@ -576,28 +482,19 @@ async function recordGoal(event) {
             }
         }
 
-        // Check if user has manually edited the announcement text
-        const manualAnnouncement = document.getElementById('announcementText');
-        let announcementText;
-        
-        if (manualAnnouncement && manualAnnouncement.value.trim() && manualAnnouncement.dataset.manualEdit === 'true') {
-            // Use manually edited text
-            announcementText = manualAnnouncement.value.trim();
-        } else {
-            // Generate announcement text
-            const announcementData = {
-                scoring_team: scoringTeam,
-                scorer_name: scorerName,
-                scorer_number: scorerNumber,
-                assist1_name: assist1Name,
-                assist1_number: assist1Number,
-                assist2_name: assist2Name,
-                assist2_number: assist2Number,
-                period: period,
-                time_remaining: timeRemaining
-            };
-            announcementText = generateAnnouncement(announcementData);
-        }
+        // Generate announcement text
+        const announcementData = {
+            scoring_team: scoringTeam,
+            scorer_name: scorerName,
+            scorer_number: scorerNumber,
+            assist1_name: assist1Name,
+            assist1_number: assist1Number,
+            assist2_name: assist2Name,
+            assist2_number: assist2Number,
+            period: period,
+            time_remaining: timeRemaining
+        };
+        const announcementText = generateAnnouncement(announcementData);
 
         // Save goal to database - try direct route first, then fallback
         // Use field names that match database schema
@@ -642,11 +539,6 @@ async function recordGoal(event) {
             document.getElementById('assist1').value = '';
             document.getElementById('assist2').value = '';
             document.getElementById('timeRemaining').value = '4:25';
-            const announcementTextarea = document.getElementById('announcementText');
-            if (announcementTextarea) {
-                announcementTextarea.value = '';
-                announcementTextarea.dataset.manualEdit = 'false';
-            }
             // Reload goals
             await loadGame();
         } else {
@@ -745,33 +637,119 @@ function renderGoals() {
         const teamMatch = goal.announcement_text.match(/Goal for the (.+?)!/);
         const teamName = teamMatch ? teamMatch[1] : (goal.scoring_team === 'home' ? homeTeam.team_name : awayTeam.team_name);
         const teamColor = goal.scoring_team === 'home' ? homeTeam.team_color : awayTeam.team_color;
+        const goalId = goal.id;
+        const isEditing = window.editingGoalId === goalId;
 
-        return `
-            <div class="goal-item">
-                <div class="goal-info">
-                    <span class="goal-team" style="background-color: ${teamColor}">${teamName}</span>
-                    <span class="goal-scorer">${goal.announcement_text}</span>
-                    <span class="goal-time">${goal.period === 'ot' ? 'OT' : `P${goal.period}`} ${goal.time_remaining}</span>
+        if (isEditing) {
+            // Show edit mode
+            return `
+                <div class="goal-item" id="goal_${goalId}">
+                    <div class="goal-info" style="flex-direction: column; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <span class="goal-team" style="background-color: ${teamColor}">${teamName}</span>
+                            <span class="goal-time">${goal.period === 'ot' ? 'OT' : `P${goal.period}`} ${goal.time_remaining}</span>
+                        </div>
+                        <textarea id="edit_announcement_${goalId}" rows="3" style="width: 100%; padding: 10px; border: 2px solid #3498db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; font-family: inherit;">${goal.announcement_text.replace(/"/g, '&quot;')}</textarea>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-primary btn-sm" onclick="saveGoalAnnouncement(${goalId})">Save</button>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelEditGoal(${goalId})">Cancel</button>
+                    </div>
                 </div>
-                <div class="goal-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="playAnnouncement('${goal.announcement_text.replace(/'/g, "\\'")}')">Play</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteGoal(${goal.id})">Delete</button>
+            `;
+        } else {
+            // Show normal mode
+            return `
+                <div class="goal-item" id="goal_${goalId}">
+                    <div class="goal-info">
+                        <span class="goal-team" style="background-color: ${teamColor}">${teamName}</span>
+                        <span class="goal-scorer">${goal.announcement_text}</span>
+                        <span class="goal-time">${goal.period === 'ot' ? 'OT' : `P${goal.period}`} ${goal.time_remaining}</span>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="playAnnouncement('${goal.announcement_text.replace(/'/g, "\\'")}')">Play</button>
+                        <button class="btn btn-primary btn-sm" onclick="editGoalAnnouncement(${goalId})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteGoal(${goalId})">Delete</button>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     }).join('');
 }
 
-function showMessage(message, type) {
-    const messageDiv = document.getElementById('gameMessage');
-    messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-    messageDiv.textContent = message;
-    messageDiv.style.display = 'block';
-
-    setTimeout(() => {
-        messageDiv.style.display = 'none';
-    }, 5000);
+function editGoalAnnouncement(goalId) {
+    window.editingGoalId = goalId;
+    renderGoals();
 }
+
+function cancelEditGoal(goalId) {
+    window.editingGoalId = null;
+    renderGoals();
+}
+
+async function saveGoalAnnouncement(goalId) {
+    try {
+        const textarea = document.getElementById(`edit_announcement_${goalId}`);
+        if (!textarea) {
+            showMessage('gameMessage', 'Error: Could not find announcement text', 'error');
+            return;
+        }
+        
+        const newAnnouncementText = textarea.value.trim();
+        if (!newAnnouncementText) {
+            showMessage('gameMessage', 'Announcement text cannot be empty', 'error');
+            return;
+        }
+        
+        // Escape HTML entities in the announcement text for safe display
+        const escapedText = newAnnouncementText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        
+        // Update goal announcement text - try PUT first, then fallback
+        let response = await apiCall(`/games/${gameId}/goals/${goalId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                announcement_text: newAnnouncementText
+            })
+        });
+        
+        // If 404, try POST with _action workaround
+        if (!response || !response.ok) {
+            response = await apiCall(`/games`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    _action: 'update-goal',
+                    game_id: parseInt(gameId),
+                    goal_id: goalId,
+                    announcement_text: newAnnouncementText
+                })
+            });
+        }
+        
+        if (!response) {
+            showMessage('gameMessage', 'Error: No response from server', 'error');
+            return;
+        }
+        
+        if (response.ok) {
+            showMessage('gameMessage', 'Announcement text updated successfully!', 'success');
+            window.editingGoalId = null;
+            await loadGame();
+        } else {
+            let errorMessage = 'Error updating announcement text';
+            try {
+                const error = await response.json();
+                errorMessage = error.error || errorMessage;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`;
+            }
+            showMessage('gameMessage', errorMessage, 'error');
+        }
+    } catch (error) {
+        console.error('Save goal announcement error:', error);
+        showMessage('gameMessage', 'Error updating announcement text', 'error');
+    }
+}
+
 
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {

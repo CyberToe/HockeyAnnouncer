@@ -1086,7 +1086,7 @@ module.exports = async function handler(req, res) {
 
                         return res.json(updatedGame);
                     } else if (parts.length === 4 && parts[2] === 'goals') {
-                        // Route: /api/v2/games/:id/goals/:goalId (DELETE)
+                        // Route: /api/v2/games/:id/goals/:goalId (DELETE or PUT)
                         const goalId = parts[3];
                         
                         if (method === 'DELETE') {
@@ -1107,6 +1107,34 @@ module.exports = async function handler(req, res) {
 
                             await query('DELETE FROM goals WHERE id = $1', [parseInt(goalId)]);
                             return res.json({ message: 'Goal deleted' });
+                        } else if (method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT')) {
+                            // Update goal announcement text
+                            const userId = req.user.userId;
+                            const { announcement_text } = req.body || {};
+
+                            if (!announcement_text) {
+                                return res.status(400).json({ error: 'Announcement text is required' });
+                            }
+
+                            // Verify goal belongs to user's game
+                            const verifyResult = await query(
+                                `SELECT g.id FROM goals g
+                                 JOIN games gm ON g.game_id = gm.id
+                                 WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
+                                [parseInt(goalId), parseInt(gameId), userId]
+                            );
+
+                            if (verifyResult.rows.length === 0) {
+                                return res.status(404).json({ error: 'Goal not found' });
+                            }
+
+                            // Update announcement text
+                            const result = await query(
+                                'UPDATE goals SET announcement_text = $1 WHERE id = $2 RETURNING *',
+                                [announcement_text, parseInt(goalId)]
+                            );
+
+                            return res.json(result.rows[0]);
                         }
                     } else if (parts.length === 3 && parts[2] === 'goals') {
                         // Route: /api/v2/games/:id/goals (POST)
