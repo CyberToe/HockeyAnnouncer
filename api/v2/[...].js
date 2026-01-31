@@ -606,8 +606,53 @@ module.exports = async function handler(req, res) {
             
             // Route: /api/v2/games
             if (route === 'games') {
+                // Handle POST with _action='record-goal' (fallback workaround for goals)
+                if (method === 'POST' && req.body && req.body._action === 'record-goal' && req.body.game_id) {
+                    const gameId = req.body.game_id;
+                    console.log('Games record-goal handler (fallback):', { gameId, body: req.body });
+                    const userId = req.user.userId;
+                    const scoringTeam = req.body.scoring_team || req.body.team;
+                    const { scorer_id, scorer_is_home, assist1_id, assist1_is_home, assist2_id, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
+                    
+                    // Remove _action and game_id from body
+                    delete req.body._action;
+                    delete req.body.game_id;
+
+                    // Verify game belongs to user
+                    const gameResult = await query(
+                        'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+                        [parseInt(gameId), userId]
+                    );
+
+                    if (gameResult.rows.length === 0) {
+                        console.error('Game not found:', { gameId, userId });
+                        return res.status(404).json({ error: 'Game not found' });
+                    }
+
+                    // Insert goal - match database schema
+                    const result = await query(
+                        `INSERT INTO goals (game_id, scoring_team, scorer_player_id, scorer_is_home, assist1_player_id, assist1_is_home, assist2_player_id, assist2_is_home, period, time_remaining, announcement_text)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+                        [
+                            parseInt(gameId), 
+                            scoringTeam, 
+                            scorer_id || null, 
+                            scorer_is_home !== undefined ? scorer_is_home : true,
+                            assist1_id || null, 
+                            assist1_is_home || null,
+                            assist2_id || null, 
+                            assist2_is_home || null,
+                            period || null, 
+                            time_remaining || null,
+                            announcement_text || null
+                        ]
+                    );
+                    
+                    console.log('Goal recorded successfully:', { goalId: result.rows[0].id, gameId });
+                    return res.status(201).json(result.rows[0]);
+                }
                 // Handle POST with _action='update-attending-players' (fallback workaround)
-                if (method === 'POST' && req.body && req.body._action === 'update-attending-players' && req.body.id) {
+                else if (method === 'POST' && req.body && req.body._action === 'update-attending-players' && req.body.id) {
                     const gameId = req.body.id;
                     console.log('Games update-attending-players handler (fallback):', { gameId, body: req.body });
                     const userId = req.user.userId;
