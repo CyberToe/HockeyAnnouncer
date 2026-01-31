@@ -208,9 +208,19 @@ async function saveAttendingPlayers() {
                     }
                     
                     if (response && response.ok) {
-                        console.log(`Updated player ${update.id} number to ${update.player_number}`);
+                        const updatedPlayer = await response.json();
+                        console.log(`Updated player ${update.id} number to ${update.player_number}:`, updatedPlayer);
                     } else {
-                        console.error(`Failed to update player ${update.id} number`);
+                        let errorMsg = `Failed to update player ${update.id} number`;
+                        try {
+                            if (response) {
+                                const error = await response.json();
+                                errorMsg = error.error || errorMsg;
+                            }
+                            console.error(`Failed to update player ${update.id} number:`, errorMsg);
+                        } catch (e) {
+                            console.error(`Failed to update player ${update.id} number:`, response?.status, response?.statusText);
+                        }
                     }
                 } catch (error) {
                     console.error(`Error updating player ${update.id} number:`, error);
