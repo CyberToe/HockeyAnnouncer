@@ -580,9 +580,30 @@ module.exports = async function handler(req, res) {
 
                     const game = gameResult.rows[0];
 
-                    // Add attending home players
+                    // Get all home team players
+                    const homeTeamResult = await query(
+                        'SELECT id FROM home_teams WHERE user_id = $1',
+                        [userId]
+                    );
+                    
+                    let playersToAdd = [];
+                    
                     if (attending_home_player_ids && attending_home_player_ids.length > 0) {
-                        for (const playerId of attending_home_player_ids) {
+                        // Use provided player IDs
+                        playersToAdd = attending_home_player_ids;
+                    } else if (homeTeamResult.rows.length > 0) {
+                        // Default: Add all home team players as attending
+                        const homeTeamId = homeTeamResult.rows[0].id;
+                        const allPlayersResult = await query(
+                            'SELECT id FROM home_team_players WHERE home_team_id = $1',
+                            [homeTeamId]
+                        );
+                        playersToAdd = allPlayersResult.rows.map(p => p.id);
+                    }
+
+                    // Add attending home players
+                    if (playersToAdd.length > 0) {
+                        for (const playerId of playersToAdd) {
                             // Verify player belongs to user's home team
                             const verifyResult = await query(
                                 `SELECT htp.id FROM home_team_players htp
@@ -599,6 +620,16 @@ module.exports = async function handler(req, res) {
                             }
                         }
                     }
+
+                    // Get attending players for response
+                    const playersResult = await query(
+                        `SELECT htp.* FROM game_home_players ghp
+                         JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                         WHERE ghp.game_id = $1
+                         ORDER BY htp.player_number`,
+                        [game.id]
+                    );
+                    game.attending_home_players = playersResult.rows;
 
                     return res.status(201).json(game);
                 }
@@ -660,8 +691,11 @@ module.exports = async function handler(req, res) {
                         return res.json(game);
                     } else if (parts.length === 2 && method === 'POST' && req.body && req.body._action === 'update-attending-players') {
                         // Update attending players: POST /api/v2/games/:id with _action=update-attending-players
+                        console.log('Update attending players handler matched:', { gameId, body: req.body });
                         const userId = req.user.userId;
                         const { attending_home_player_ids } = req.body || {};
+                        
+                        console.log('Updating attending players:', { gameId, userId, attending_home_player_ids });
                         
                         // Remove _action from body
                         delete req.body._action;
@@ -673,14 +707,17 @@ module.exports = async function handler(req, res) {
                         );
 
                         if (gameResult.rows.length === 0) {
+                            console.error('Game not found:', { gameId, userId });
                             return res.status(404).json({ error: 'Game not found' });
                         }
 
                         // Delete all existing attending players
                         await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
+                        console.log('Deleted existing attending players for game:', gameId);
 
                         // Add new attending players
                         if (attending_home_player_ids && attending_home_player_ids.length > 0) {
+                            console.log('Adding attending players:', attending_home_player_ids);
                             for (const playerId of attending_home_player_ids) {
                                 // Verify player belongs to user's home team
                                 const verifyResult = await query(
@@ -695,8 +732,13 @@ module.exports = async function handler(req, res) {
                                         'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
                                         [parseInt(gameId), playerId]
                                     );
+                                    console.log('Added attending player:', playerId);
+                                } else {
+                                    console.warn('Player not found or does not belong to user:', { playerId, userId });
                                 }
                             }
+                        } else {
+                            console.log('No attending players to add');
                         }
 
                         // Return updated game with attending players
@@ -719,6 +761,11 @@ module.exports = async function handler(req, res) {
                             [parseInt(gameId)]
                         );
                         updatedGame.attending_home_players = playersResult.rows;
+                        
+                        console.log('Returning updated game with attending players:', { 
+                            gameId, 
+                            attendingCount: updatedGame.attending_home_players.length 
+                        });
 
                         return res.json(updatedGame);
                     } else if (parts.length === 4 && parts[2] === 'goals') {

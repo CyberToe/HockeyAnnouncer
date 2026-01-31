@@ -143,9 +143,14 @@ function renderAttendingPlayers() {
     }
 
     const attendingPlayerIds = (currentGame.attending_home_players || []).map(p => p.id);
+    
+    // If no players are marked as attending, default to all players attending
+    const hasAttendingPlayers = attendingPlayerIds.length > 0;
+    const defaultToAll = !hasAttendingPlayers;
 
     container.innerHTML = homeTeam.players.map(player => {
-        const isChecked = attendingPlayerIds.includes(player.id);
+        // Check if player is attending, or default to checked if no players are attending yet
+        const isChecked = defaultToAll || attendingPlayerIds.includes(player.id);
         return `
             <div class="checkbox-item">
                 <input type="checkbox" id="attending_${player.id}" value="${player.id}" ${isChecked ? 'checked' : ''}>
@@ -160,6 +165,8 @@ async function saveAttendingPlayers() {
     try {
         const checkboxes = document.querySelectorAll('#attendingPlayersCheckboxes input[type="checkbox"]:checked');
         const attendingPlayerIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        console.log('Saving attending players:', { gameId, attendingPlayerIds });
 
         // Use POST with _action workaround since routes with IDs have routing issues
         const response = await apiCall(`/games/${gameId}`, {
@@ -170,18 +177,38 @@ async function saveAttendingPlayers() {
             })
         });
 
-        if (!response) return;
+        if (!response) {
+            console.error('No response from saveAttendingPlayers');
+            showMessage('attendingMessage', 'Error: No response from server', 'error');
+            return;
+        }
+
+        console.log('Save attending players response:', { ok: response.ok, status: response.status });
 
         if (response.ok) {
+            const updatedGame = await response.json();
+            console.log('Attending players saved successfully:', updatedGame);
             showMessage('attendingMessage', 'Attending players updated successfully!', 'success');
-            await loadGame(); // Reload to refresh attending players
+            // Update currentGame with the response
+            currentGame.attending_home_players = updatedGame.attending_home_players || [];
+            // Re-render to show updated state
+            renderAttendingPlayers();
+            updatePlayerDropdowns();
         } else {
-            const error = await response.json();
-            showMessage('attendingMessage', error.error || 'Error updating attending players', 'error');
+            let errorMessage = 'Error updating attending players';
+            try {
+                const error = await response.json();
+                errorMessage = error.error || errorMessage;
+                console.error('Save attending players error:', error);
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                console.error('Save attending players error (non-JSON):', errorMessage);
+            }
+            showMessage('attendingMessage', errorMessage, 'error');
         }
     } catch (error) {
         console.error('Save attending players error:', error);
-        showMessage('attendingMessage', 'Error updating attending players', 'error');
+        showMessage('attendingMessage', `Error updating attending players: ${error.message}`, 'error');
     }
 }
 
