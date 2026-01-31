@@ -167,11 +167,23 @@ module.exports = async function handler(req, res) {
     
     // EARLY HANDLING: Check for games/:id POST with _action=update-attending-players
     // This ensures the route is caught even if Vercel routing is problematic
-    if (req.method === 'POST' && req.body && req.body._action === 'update-attending-players' && rawUrl.includes('/games/')) {
-        const match = rawUrl.match(/games\/(\d+)/);
-        if (match) {
+    // Check if this is a games route first
+    const isGamesRoute = rawUrl.includes('games/') && !rawUrl.includes('goals');
+    if (req.method === 'POST' && isGamesRoute) {
+        console.log('Early games route check:', { 
+            method: req.method, 
+            url: rawUrl, 
+            body: req.body, 
+            bodyType: typeof req.body,
+            hasAction: req.body && req.body._action,
+            action: req.body && req.body._action
+        });
+        
+        // Try multiple URL patterns: /api/v2/games/1, /games/1, games/1
+        const match = rawUrl.match(/(?:api\/v2\/)?games\/(\d+)/) || rawUrl.match(/games\/(\d+)/);
+        if (match && req.body && req.body._action === 'update-attending-players') {
             const gameId = match[1];
-            console.log('Early games update-attending-players handler:', { gameId, url: rawUrl, body: req.body });
+            console.log('Early games update-attending-players handler MATCHED:', { gameId, url: rawUrl, rawUrl, body: req.body, bodyType: typeof req.body });
             
             // Authenticate first
             const authHeader = req.headers['authorization'];
