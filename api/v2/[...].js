@@ -93,6 +93,69 @@ module.exports = async function handler(req, res) {
         }
     }
     
+    // EARLY HANDLING: Check for home-team/players POST with _action=update before route parsing
+    // This ensures the update handler is matched before the add player handler
+    if (req.method === 'POST' && req.body && req.body._action === 'update' && req.body.id && (req.url.includes('home-team/players') || req.url.includes('home-team/players/'))) {
+        console.log('Early handler: home-team/players update detected:', { url: req.url, body: req.body });
+        
+        // Authenticate first
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({ error: 'Access token required' });
+        }
+        
+        try {
+            const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
+            req.user = decoded;
+            
+            const playerId = req.body.id;
+            const { player_number } = req.body;
+            const userId = req.user.userId;
+            
+            console.log('Early handler: Updating player number:', { playerId, player_number, userId });
+            
+            if (player_number === undefined || player_number === null) {
+                return res.status(400).json({ error: 'Player number is required' });
+            }
+            
+            // Verify player belongs to user's home team
+            const verifyResult = await query(
+                `SELECT htp.id FROM home_team_players htp
+                 JOIN home_teams ht ON htp.home_team_id = ht.id
+                 WHERE htp.id = $1 AND ht.user_id = $2`,
+                [parseInt(playerId), userId]
+            );
+            
+            if (verifyResult.rows.length === 0) {
+                return res.status(404).json({ error: 'Player not found' });
+            }
+            
+            // Update player number
+            try {
+                const result = await query(
+                    'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
+                    [parseInt(player_number), parseInt(playerId)]
+                );
+                
+                console.log('Early handler: Player number updated successfully:', result.rows[0]);
+                return res.json(result.rows[0]);
+            } catch (dbError) {
+                console.error('Early handler: Database error updating player number:', dbError);
+                if (dbError.code === '23505') { // Unique constraint violation
+                    return res.status(400).json({ error: 'Player number already exists' });
+                }
+                throw dbError;
+            }
+        } catch (err) {
+            if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+                return res.status(403).json({ error: 'Invalid or expired token' });
+            }
+            throw err;
+        }
+    }
+    
     // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
     // This handles cases where Vercel's catch-all routing might not work correctly
     // Also handle POST with _method=PUT/DELETE workaround
