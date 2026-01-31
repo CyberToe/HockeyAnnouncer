@@ -219,6 +219,8 @@ async function saveAttendingPlayers() {
             const homeTeamResponse = await apiCall('/home-team');
             if (homeTeamResponse && homeTeamResponse.ok) {
                 homeTeam = await homeTeamResponse.json();
+                // Also reload the game to update attending players with new numbers
+                await loadGame();
             }
         }
         
@@ -331,8 +333,9 @@ function updatePlayerDropdowns() {
     let isHome = scoringTeam === 'home';
 
     if (isHome) {
-        // Get attending home players
-        players = (currentGame && currentGame.attending_home_players) ? currentGame.attending_home_players : [];
+        // Get attending home players - use homeTeam.players to get updated numbers
+        const attendingIds = (currentGame && currentGame.attending_home_players) ? currentGame.attending_home_players.map(p => p.id) : [];
+        players = (homeTeam && homeTeam.players) ? homeTeam.players.filter(p => attendingIds.includes(p.id)) : [];
     } else {
         // Get away team players
         players = (awayTeam && awayTeam.players) ? awayTeam.players : [];
@@ -357,15 +360,111 @@ function updatePlayerDropdowns() {
             select.appendChild(option);
         });
     });
+    
+    // Update announcement text when dropdowns change
+    updateAnnouncementText();
+}
+
+function updateAnnouncementText() {
+    const announcementTextarea = document.getElementById('announcementText');
+    if (!announcementTextarea) return;
+    
+    // Only auto-update if user hasn't manually edited it
+    if (announcementTextarea.dataset.manualEdit === 'true') return;
+    
+    const scoringTeam = document.getElementById('scoringTeam')?.value;
+    const scorerData = document.getElementById('scorer')?.value;
+    const assist1Data = document.getElementById('assist1')?.value;
+    const assist2Data = document.getElementById('assist2')?.value;
+    const period = document.getElementById('period')?.value;
+    const timeRemaining = document.getElementById('timeRemaining')?.value;
+    
+    if (!scorerData || !scoringTeam || !period || !timeRemaining) {
+        announcementTextarea.value = '';
+        return;
+    }
+    
+    const [scorerId, scorerIsHome] = scorerData.split('|');
+    const assist1 = assist1Data ? assist1Data.split('|') : null;
+    const assist2 = assist2Data ? assist2Data.split('|') : null;
+    
+    // Get player names and numbers
+    let scorerName, scorerNumber;
+    let assist1Name = null, assist1Number = null;
+    let assist2Name = null, assist2Number = null;
+    
+    if (scorerIsHome === 'true') {
+        const player = homeTeam?.players?.find(p => p.id === parseInt(scorerId));
+        if (player) {
+            scorerName = player.player_name;
+            scorerNumber = player.player_number;
+        }
+    } else {
+        const player = awayTeam?.players?.find(p => p.id === parseInt(scorerId));
+        if (player) {
+            scorerName = player.player_name;
+            scorerNumber = player.player_number;
+        }
+    }
+    
+    if (assist1) {
+        const assist1IsHome = assist1[1] === 'true';
+        if (assist1IsHome) {
+            const player = homeTeam?.players?.find(p => p.id === parseInt(assist1[0]));
+            if (player) {
+                assist1Name = player.player_name;
+                assist1Number = player.player_number;
+            }
+        } else {
+            const player = awayTeam?.players?.find(p => p.id === parseInt(assist1[0]));
+            if (player) {
+                assist1Name = player.player_name;
+                assist1Number = player.player_number;
+            }
+        }
+    }
+    
+    if (assist2) {
+        const assist2IsHome = assist2[1] === 'true';
+        if (assist2IsHome) {
+            const player = homeTeam?.players?.find(p => p.id === parseInt(assist2[0]));
+            if (player) {
+                assist2Name = player.player_name;
+                assist2Number = player.player_number;
+            }
+        } else {
+            const player = awayTeam?.players?.find(p => p.id === parseInt(assist2[0]));
+            if (player) {
+                assist2Name = player.player_name;
+                assist2Number = player.player_number;
+            }
+        }
+    }
+    
+    if (!scorerName) return;
+    
+    const announcementData = {
+        scoring_team: scoringTeam,
+        scorer_name: scorerName,
+        scorer_number: scorerNumber,
+        assist1_name: assist1Name,
+        assist1_number: assist1Number,
+        assist2_name: assist2Name,
+        assist2_number: assist2Number,
+        period: period,
+        time_remaining: timeRemaining
+    };
+    
+    announcementTextarea.value = generateAnnouncement(announcementData);
 }
 
 function generateAnnouncement(goal) {
     let announcement = `Goal for the ${goal.scoring_team === 'home' ? homeTeam.team_name : awayTeam.team_name}! by number ${goal.scorer_number}, ${goal.scorer_name}`;
     
     if (goal.assist1_name) {
-        announcement += `, assisted by ${goal.assist1_name}`;
+        announcement += `, assisted by number ${goal.assist1_number}, ${goal.assist1_name}`;
         if (goal.assist2_name) {
-            announcement += ` and ${goal.assist2_name}`;
+            announcement += ` and number ${goal.assist2_number}, ${goal.assist2_name}`;
         }
     } else {
         announcement += `, unassisted`;
@@ -491,6 +590,11 @@ async function recordGoal(event) {
             document.getElementById('assist1').value = '';
             document.getElementById('assist2').value = '';
             document.getElementById('timeRemaining').value = '4:25';
+            const announcementTextarea = document.getElementById('announcementText');
+            if (announcementTextarea) {
+                announcementTextarea.value = '';
+                announcementTextarea.dataset.manualEdit = 'false';
+            }
             // Reload goals
             await loadGame();
         } else {
