@@ -381,7 +381,7 @@ async function recordGoal(event) {
         }
 
         // Generate announcement text
-        const goalData = {
+        const announcementData = {
             scoring_team: scoringTeam,
             scorer_name: scorerName,
             scorer_number: scorerNumber,
@@ -390,7 +390,7 @@ async function recordGoal(event) {
             period: period,
             time_remaining: timeRemaining
         };
-        const announcementText = generateAnnouncement(goalData);
+        const announcementText = generateAnnouncement(announcementData);
 
         // Save goal to database - try direct route first, then fallback
         // Use field names that match database schema
