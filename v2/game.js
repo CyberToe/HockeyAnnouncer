@@ -4,6 +4,7 @@ let authToken = localStorage.getItem('authToken');
 let currentGame = null;
 let homeTeam = null;
 let awayTeam = null;
+let selectedVoice = localStorage.getItem('selectedVoice') || 'ErXwobaYiN019PkySvjV'; // Default to Antoni
 
 // Check authentication
 if (!authToken) {
