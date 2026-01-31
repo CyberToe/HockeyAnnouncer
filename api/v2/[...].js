@@ -93,10 +93,40 @@ module.exports = async function handler(req, res) {
         }
     }
     
+    // Log the request for debugging
+    console.log('V2 catch-all request:', {
+        method: req.method,
+        url: req.url,
+        bodyType: typeof req.body,
+        body: req.body,
+        hasAction: req.body && req.body._action,
+        action: req.body && req.body._action,
+        hasId: req.body && req.body.id,
+        id: req.body && req.body.id
+    });
+    
     // EARLY HANDLING: Check for home-team/players POST with _action=update before route parsing
     // This ensures the update handler is matched before the add player handler
-    if (req.method === 'POST' && req.body && req.body._action === 'update' && req.body.id && (req.url.includes('home-team/players') || req.url.includes('home-team/players/'))) {
-        console.log('Early handler: home-team/players update detected:', { url: req.url, body: req.body });
+    const rawUrl = req.url || '';
+    const isHomeTeamPlayersUpdate = req.method === 'POST' && 
+                                    req.body && 
+                                    typeof req.body === 'object' &&
+                                    req.body._action === 'update' && 
+                                    req.body.id && 
+                                    (rawUrl.includes('home-team/players') || rawUrl.includes('home-team/players/'));
+    
+    console.log('Checking early handler:', {
+        isPost: req.method === 'POST',
+        hasBody: !!req.body,
+        bodyType: typeof req.body,
+        action: req.body && req.body._action,
+        hasId: req.body && req.body.id,
+        urlIncludes: rawUrl.includes('home-team/players'),
+        isHomeTeamPlayersUpdate
+    });
+    
+    if (isHomeTeamPlayersUpdate) {
+        console.log('Early handler: home-team/players update detected:', { url: rawUrl, body: req.body });
         
         // Authenticate first
         const authHeader = req.headers['authorization'];
