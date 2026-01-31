@@ -557,6 +557,19 @@ function showMessage(message, type) {
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', () => {
     loadGame();
+    
+    // Set up voice selection
+    const voiceSelect = document.getElementById('voiceSelect');
+    if (voiceSelect) {
+        // Load saved voice preference
+        voiceSelect.value = selectedVoice;
+        
+        // Save voice preference when changed
+        voiceSelect.addEventListener('change', (e) => {
+            selectedVoice = e.target.value;
+            localStorage.setItem('selectedVoice', selectedVoice);
+        });
+    }
 });
 
 
