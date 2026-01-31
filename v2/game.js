@@ -170,15 +170,25 @@ async function saveAttendingPlayers() {
         
         // Get all player number updates
         const playerUpdates = [];
+        console.log('Checking for player number updates. Home team players:', homeTeam.players);
         homeTeam.players.forEach(player => {
             const numberInput = document.getElementById(`number_${player.id}`);
-            if (numberInput && parseInt(numberInput.value) !== player.player_number) {
-                playerUpdates.push({
-                    id: player.id,
-                    player_number: parseInt(numberInput.value)
-                });
+            if (numberInput) {
+                const inputValue = parseInt(numberInput.value);
+                const currentNumber = parseInt(player.player_number);
+                console.log(`Player ${player.id} (${player.player_name}): input=${inputValue}, current=${currentNumber}, match=${inputValue === currentNumber}`);
+                if (inputValue !== currentNumber) {
+                    playerUpdates.push({
+                        id: player.id,
+                        player_number: inputValue
+                    });
+                }
+            } else {
+                console.warn(`Number input not found for player ${player.id} (${player.player_name})`);
             }
         });
+        
+        console.log('Player updates to process:', playerUpdates);
         
         // Update player numbers first
         if (playerUpdates.length > 0) {
