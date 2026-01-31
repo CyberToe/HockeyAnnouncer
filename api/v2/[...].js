@@ -99,13 +99,13 @@ module.exports = async function handler(req, res) {
     const rawUrl = req.url || '';
     const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
     const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
-    if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrlEarly.includes('/away-teams/') && !rawUrlEarly.includes('/players')) {
+    if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
         // Extract team ID from URL pattern: /api/v2/away-teams/123 or away-teams/123
-        const match = rawUrlEarly.match(/away-teams\/(\d+)/);
+        const match = rawUrl.match(/away-teams\/(\d+)/);
         if (match) {
             const teamId = match[1];
             const actualMethod = isPutWorkaround ? 'PUT' : (isDeleteWorkaround ? 'DELETE' : req.method);
-            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrlEarly, isPutWorkaround, isDeleteWorkaround });
+            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrl, isPutWorkaround, isDeleteWorkaround });
             
             // Authenticate first
             const authHeader = req.headers['authorization'];
@@ -156,6 +156,111 @@ module.exports = async function handler(req, res) {
 
                     return res.json({ message: 'Away team deleted' });
                 }
+            } catch (err) {
+                if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+                    return res.status(403).json({ error: 'Invalid or expired token' });
+                }
+                throw err;
+            }
+        }
+    }
+    
+    // EARLY HANDLING: Check for games/:id POST with _action=update-attending-players
+    // This ensures the route is caught even if Vercel routing is problematic
+    if (req.method === 'POST' && req.body && req.body._action === 'update-attending-players' && rawUrl.includes('/games/')) {
+        const match = rawUrl.match(/games\/(\d+)/);
+        if (match) {
+            const gameId = match[1];
+            console.log('Early games update-attending-players handler:', { gameId, url: rawUrl, body: req.body });
+            
+            // Authenticate first
+            const authHeader = req.headers['authorization'];
+            const token = authHeader && authHeader.split(' ')[1];
+            
+            if (!token) {
+                return res.status(401).json({ error: 'Access token required' });
+            }
+            
+            try {
+                const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
+                req.user = decoded;
+                
+                const userId = req.user.userId;
+                const { attending_home_player_ids } = req.body || {};
+                
+                console.log('Updating attending players (early handler):', { gameId, userId, attending_home_player_ids });
+                
+                // Remove _action from body
+                delete req.body._action;
+
+                // Verify game belongs to user
+                const gameResult = await query(
+                    'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+                    [parseInt(gameId), userId]
+                );
+
+                if (gameResult.rows.length === 0) {
+                    console.error('Game not found:', { gameId, userId });
+                    return res.status(404).json({ error: 'Game not found' });
+                }
+
+                // Delete all existing attending players
+                await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
+                console.log('Deleted existing attending players for game:', gameId);
+
+                // Add new attending players
+                if (attending_home_player_ids && attending_home_player_ids.length > 0) {
+                    console.log('Adding attending players:', attending_home_player_ids);
+                    for (const playerId of attending_home_player_ids) {
+                        // Verify player belongs to user's home team
+                        const verifyResult = await query(
+                            `SELECT htp.id FROM home_team_players htp
+                             JOIN home_teams ht ON htp.home_team_id = ht.id
+                             WHERE htp.id = $1 AND ht.user_id = $2`,
+                            [playerId, userId]
+                        );
+
+                        if (verifyResult.rows.length > 0) {
+                            await query(
+                                'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                [parseInt(gameId), playerId]
+                            );
+                            console.log('Added attending player:', playerId);
+                        } else {
+                            console.warn('Player not found or does not belong to user:', { playerId, userId });
+                        }
+                    }
+                } else {
+                    console.log('No attending players to add');
+                }
+
+                // Return updated game with attending players
+                const updatedGameResult = await query(
+                    `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
+                     FROM games g
+                     JOIN away_teams at ON g.away_team_id = at.id
+                     WHERE g.id = $1 AND g.user_id = $2`,
+                    [parseInt(gameId), userId]
+                );
+
+                const updatedGame = updatedGameResult.rows[0];
+
+                // Get attending home players
+                const playersResult = await query(
+                    `SELECT htp.* FROM game_home_players ghp
+                     JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                     WHERE ghp.game_id = $1
+                     ORDER BY htp.player_number`,
+                    [parseInt(gameId)]
+                );
+                updatedGame.attending_home_players = playersResult.rows;
+                
+                console.log('Returning updated game with attending players:', { 
+                    gameId, 
+                    attendingCount: updatedGame.attending_home_players.length 
+                });
+
+                return res.json(updatedGame);
             } catch (err) {
                 if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
                     return res.status(403).json({ error: 'Invalid or expired token' });
