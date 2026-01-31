@@ -501,12 +501,20 @@ async function playAnnouncement(announcementText) {
             
             audio.onerror = (event) => {
                 console.error('Audio playback error:', event);
-                showMessage('Error playing announcement', 'error');
+                showMessage('gameMessage', 'Error playing announcement', 'error');
             };
             
             audio.play();
         } else {
-            showMessage('gameMessage', 'Error generating announcement audio', 'error');
+            let errorMessage = 'Error generating announcement audio';
+            try {
+                const error = await response.json();
+                errorMessage = error.details || error.error || errorMessage;
+                console.error('TTS API error:', error);
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`;
+            }
+            showMessage('gameMessage', errorMessage, 'error');
         }
     } catch (error) {
         console.error('Play announcement error:', error);

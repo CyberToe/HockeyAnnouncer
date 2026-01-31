@@ -47,7 +47,21 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`ElevenLabs API error: ${response.status} - ${errorText}`);
-      throw new Error(`ElevenLabs API error: ${response.status}`);
+      let errorMessage = `ElevenLabs API error: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.detail && errorJson.detail.message) {
+          errorMessage = errorJson.detail.message;
+        }
+      } catch (e) {
+        // If parsing fails, use the raw error text
+        errorMessage = errorText || errorMessage;
+      }
+      return res.status(response.status).json({ 
+        error: 'TTS generation failed',
+        details: errorMessage,
+        voice: voice
+      });
     }
 
     const audioBuffer = await response.arrayBuffer();
