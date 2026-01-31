@@ -606,8 +606,88 @@ module.exports = async function handler(req, res) {
             
             // Route: /api/v2/games
             if (route === 'games') {
+                // Handle POST with _action='update-attending-players' (fallback workaround)
+                if (method === 'POST' && req.body && req.body._action === 'update-attending-players' && req.body.id) {
+                    const gameId = req.body.id;
+                    console.log('Games update-attending-players handler (fallback):', { gameId, body: req.body });
+                    const userId = req.user.userId;
+                    const { attending_home_player_ids } = req.body || {};
+                    
+                    // Remove _action and id from body
+                    delete req.body._action;
+                    delete req.body.id;
+
+                    // Verify game belongs to user
+                    const gameResult = await query(
+                        'SELECT id FROM games WHERE id = $1 AND user_id = $2',
+                        [parseInt(gameId), userId]
+                    );
+
+                    if (gameResult.rows.length === 0) {
+                        console.error('Game not found:', { gameId, userId });
+                        return res.status(404).json({ error: 'Game not found' });
+                    }
+
+                    // Delete all existing attending players
+                    await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
+                    console.log('Deleted existing attending players for game:', gameId);
+
+                    // Add new attending players
+                    if (attending_home_player_ids && attending_home_player_ids.length > 0) {
+                        console.log('Adding attending players:', attending_home_player_ids);
+                        for (const playerId of attending_home_player_ids) {
+                            // Verify player belongs to user's home team
+                            const verifyResult = await query(
+                                `SELECT htp.id FROM home_team_players htp
+                                 JOIN home_teams ht ON htp.home_team_id = ht.id
+                                 WHERE htp.id = $1 AND ht.user_id = $2`,
+                                [playerId, userId]
+                            );
+
+                            if (verifyResult.rows.length > 0) {
+                                await query(
+                                    'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                    [parseInt(gameId), playerId]
+                                );
+                                console.log('Added attending player:', playerId);
+                            } else {
+                                console.warn('Player not found or does not belong to user:', { playerId, userId });
+                            }
+                        }
+                    } else {
+                        console.log('No attending players to add');
+                    }
+
+                    // Return updated game with attending players
+                    const updatedGameResult = await query(
+                        `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
+                         FROM games g
+                         JOIN away_teams at ON g.away_team_id = at.id
+                         WHERE g.id = $1 AND g.user_id = $2`,
+                        [parseInt(gameId), userId]
+                    );
+
+                    const updatedGame = updatedGameResult.rows[0];
+
+                    // Get attending home players
+                    const playersResult = await query(
+                        `SELECT htp.* FROM game_home_players ghp
+                         JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
+                         WHERE ghp.game_id = $1
+                         ORDER BY htp.player_number`,
+                        [parseInt(gameId)]
+                    );
+                    updatedGame.attending_home_players = playersResult.rows;
+                    
+                    console.log('Returning updated game with attending players:', { 
+                        gameId, 
+                        attendingCount: updatedGame.attending_home_players.length 
+                    });
+
+                    return res.json(updatedGame);
+                }
                 // Handle POST with _action='get' to get a single game (workaround for routing issues)
-                if (method === 'POST' && req.body && req.body._action === 'get' && req.body.id) {
+                else if (method === 'POST' && req.body && req.body._action === 'get' && req.body.id) {
                     const gameId = req.body.id;
                     const userId = req.user.userId;
                     console.log('Getting game via POST workaround:', { gameId, userId });

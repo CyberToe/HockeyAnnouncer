@@ -168,14 +168,27 @@ async function saveAttendingPlayers() {
         
         console.log('Saving attending players:', { gameId, attendingPlayerIds });
 
-        // Use POST with _action workaround since routes with IDs have routing issues
-        const response = await apiCall(`/games/${gameId}`, {
+        // Try POST to /games/:id first, then fallback to /games with id in body (like away-teams)
+        let response = await apiCall(`/games/${gameId}`, {
             method: 'POST',
             body: JSON.stringify({
                 _action: 'update-attending-players',
                 attending_home_player_ids: attendingPlayerIds
             })
         });
+        
+        // If 404, try the workaround pattern (POST to /games with id in body)
+        if (!response || response.status === 404) {
+            console.log('First attempt failed, trying workaround pattern');
+            response = await apiCall(`/games`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    _action: 'update-attending-players',
+                    id: parseInt(gameId),
+                    attending_home_player_ids: attendingPlayerIds
+                })
+            });
+        }
 
         if (!response) {
             console.error('No response from saveAttendingPlayers');
