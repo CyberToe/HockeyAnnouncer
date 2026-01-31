@@ -393,20 +393,22 @@ async function recordGoal(event) {
         const announcementText = generateAnnouncement(goalData);
 
         // Save goal to database - try direct route first, then fallback
+        const goalData = {
+            scoring_team: scoringTeam,
+            scorer_id: parseInt(scorerId),
+            scorer_is_home: scorerIsHome === 'true',
+            assist1_id: assist1 ? parseInt(assist1[0]) : null,
+            assist1_is_home: assist1 ? assist1[1] === 'true' : null,
+            assist2_id: assist2 ? parseInt(assist2[0]) : null,
+            assist2_is_home: assist2 ? assist2[1] === 'true' : null,
+            period: period,
+            time_remaining: timeRemaining,
+            announcement_text: announcementText
+        };
+        
         let response = await apiCall(`/games/${gameId}/goals`, {
             method: 'POST',
-            body: JSON.stringify({
-                team: scoringTeam,
-                scorer_id: parseInt(scorerId),
-                scorer_is_home: scorerIsHome === 'true',
-                assist1_id: assist1 ? parseInt(assist1[0]) : null,
-                assist1_is_home: assist1 ? assist1[1] === 'true' : null,
-                assist2_id: assist2 ? parseInt(assist2[0]) : null,
-                assist2_is_home: assist2 ? assist2[1] === 'true' : null,
-                period: period,
-                time_remaining: timeRemaining,
-                announcement_text: announcementText
-            })
+            body: JSON.stringify(goalData)
         });
         
         // If 404, try fallback pattern (POST to /games with game_id and _action in body)
@@ -417,16 +419,7 @@ async function recordGoal(event) {
                 body: JSON.stringify({
                     _action: 'record-goal',
                     game_id: parseInt(gameId),
-                    team: scoringTeam,
-                    scorer_id: parseInt(scorerId),
-                    scorer_is_home: scorerIsHome === 'true',
-                    assist1_id: assist1 ? parseInt(assist1[0]) : null,
-                    assist1_is_home: assist1 ? assist1[1] === 'true' : null,
-                    assist2_id: assist2 ? parseInt(assist2[0]) : null,
-                    assist2_is_home: assist2 ? assist2[1] === 'true' : null,
-                    period: period,
-                    time_remaining: timeRemaining,
-                    announcement_text: announcementText
+                    ...goalData
                 })
             });
             console.log('Fallback goal save response:', { ok: response?.ok, status: response?.status });
