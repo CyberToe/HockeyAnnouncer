@@ -122,23 +122,47 @@ function renderAttendingPlayers() {
     const defaultAll = !hasAny;
 
     function block(slot, team) {
+        const rawColor = (team.team_color && String(team.team_color).trim()) || '';
+        const accent = rawColor.startsWith('#') ? rawColor : '#3498db';
+        const labelSlot = slot === 'team_a' ? 'Team A' : 'Team B';
+
         if (!team.players || team.players.length === 0) {
-            return `<p style="color: #7f8c8d;">No players on <strong>${escapeHtml(team.team_name)}</strong> yet.</p>`;
+            return `
+            <div class="attending-team-group" style="--team-accent: ${accent}">
+                <div class="attending-team-group__header">
+                    <span class="attending-team-group__badge">${labelSlot}</span>
+                    <h3>${escapeHtml(team.team_name)}</h3>
+                </div>
+                <div class="attending-team-group__list">
+                    <p style="color: #7f8c8d; margin: 0;">No players on this roster yet.</p>
+                </div>
+            </div>`;
         }
-        const rows = team.players
+
+        const sorted = [...team.players].sort((a, b) => a.player_number - b.player_number);
+        const rows = sorted
             .map((player) => {
                 const checked = defaultAll || attendingIds.includes(player.id);
                 return `
-                <div class="checkbox-item" style="display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+                <div class="attending-player-row">
                     <input type="checkbox" id="att_${slot}_${player.id}" data-slot="${slot}" value="${player.id}" ${checked ? 'checked' : ''}>
-                    <label for="att_${slot}_${player.id}" style="flex: 1; margin: 0;">${escapeHtml(player.player_name)}</label>
-                    <input type="number" id="num_${slot}_${player.id}" value="${player.player_number}" min="1" max="99" style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                    <label for="att_${slot}_${player.id}">${escapeHtml(player.player_name)}</label>
+                    <span style="color:#95a5a6;font-size:0.9rem;">#</span>
+                    <input type="number" id="num_${slot}_${player.id}" value="${player.player_number}" min="1" max="99" title="Jersey for this game" style="width: 56px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 6px;">
                 </div>`;
             })
             .join('');
+
         return `
-            <h3 style="margin: 16px 0 8px; color: #2c3e50;">${escapeHtml(team.team_name)}</h3>
-            ${rows}`;
+            <div class="attending-team-group" style="--team-accent: ${accent}">
+                <div class="attending-team-group__header">
+                    <span class="attending-team-group__badge">${labelSlot}</span>
+                    <h3>${escapeHtml(team.team_name)}</h3>
+                </div>
+                <div class="attending-team-group__list">
+                    ${rows}
+                </div>
+            </div>`;
     }
 
     container.innerHTML = block('team_a', teamA) + block('team_b', teamB);
