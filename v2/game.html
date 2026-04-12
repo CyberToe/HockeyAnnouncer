@@ -192,7 +192,7 @@
         <!-- Attending Players Tab -->
         <div id="attending-tab" class="tab-content active">
             <div class="section-card">
-                <h2>Select Attending Home Team Players</h2>
+                <h2>Select attending players</h2>
                 <div id="attendingMessage"></div>
                 <div id="attendingPlayersCheckboxes" class="checkbox-group"></div>
                 <button class="btn btn-primary" onclick="saveAttendingPlayers()" style="margin-top: 15px;">Save Attending Players</button>
@@ -207,10 +207,7 @@
                 <form id="goalForm" onsubmit="recordGoal(event)">
                 <div class="form-group">
                     <label for="scoringTeam">Scoring Team:</label>
-                    <select id="scoringTeam" onchange="updatePlayerDropdowns()">
-                        <option value="home">Home Team</option>
-                        <option value="away">Away Team</option>
-                    </select>
+                    <select id="scoringTeam" onchange="updatePlayerDropdowns()"></select>
                 </div>
 
                 <div class="form-group">

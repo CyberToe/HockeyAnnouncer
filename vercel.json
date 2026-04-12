@@ -9,10 +9,10 @@
     "api/auth/login.js": {
       "maxDuration": 30
     },
-    "api/v2/home-team/players.js": {
+    "api/v2/teams/players.js": {
       "maxDuration": 30
     },
-    "api/v2/home-team/players/[id].js": {
+    "api/v2/teams/players/[id].js": {
       "maxDuration": 30
     },
     "api/v2/[...].js": {

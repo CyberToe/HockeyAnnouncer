@@ -1,17 +1,13 @@
-// Vercel catch-all serverless function for V2 API routes
-// This handles all /api/v2/* routes
+// Vercel catch-all for /api/v2/* — mirrors api/v2.js (teams, games, goals)
 const { query } = require('../../database/db');
 const jwt = require('jsonwebtoken');
 
-// Authentication middleware
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
+    const token = authHeader && authHeader.split(' ')[1];
     if (!token) {
         return res.status(401).json({ error: 'Access token required' });
     }
-
     try {
         const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
         req.user = decoded;
@@ -21,51 +17,55 @@ function authenticateToken(req, res, next) {
     }
 }
 
-// Extract the route from the URL
 function getRoute(req) {
-    // Vercel catch-all pattern: /api/v2/[...].js
-    // For /api/v2/away-teams/1/players, req.url might be:
-    // - /api/v2/away-teams/1/players (full path)
-    // - /away-teams/1/players (relative to the function)
-    // - away-teams/1/players (just the segments)
     let url = req.url || '';
-    
-    console.log('Raw req.url:', url);
-    
-    // Remove query string if present
-    url = url.split('?')[0];
-    
-    // Remove leading slashes
-    url = url.replace(/^\/+/, '');
-    
-    // If it starts with api/v2/, remove that prefix
-    if (url.startsWith('api/v2/')) {
-        url = url.replace('api/v2/', '');
+    url = url.split('?')[0].replace(/^\/+/, '');
+    if (url.startsWith('api/v2/')) url = url.replace('api/v2/', '');
+    else if (url.startsWith('v2/')) url = url.replace('v2/', '');
+    return url.replace(/\/+$/, '');
+}
+
+async function loadTeamsWithPlayers(userId) {
+    const result = await query('SELECT * FROM teams WHERE user_id = $1 ORDER BY team_name', [userId]);
+    const teams = result.rows;
+    for (const team of teams) {
+        const pr = await query(
+            'SELECT * FROM team_players WHERE team_id = $1 ORDER BY player_number',
+            [team.id]
+        );
+        team.players = pr.rows;
     }
-    // If it starts with v2/, remove that prefix
-    else if (url.startsWith('v2/')) {
-        url = url.replace('v2/', '');
-    }
-    
-    // Remove trailing slashes
-    url = url.replace(/\/+$/, '');
-    
-    console.log('Parsed route:', url);
-    
-    return url;
+    return teams;
+}
+
+async function fetchGameRow(userId, gameId) {
+    const gameResult = await query(
+        `SELECT g.*,
+                ta.team_name AS team_a_name, ta.team_color AS team_a_color,
+                tb.team_name AS team_b_name, tb.team_color AS team_b_color
+         FROM games g
+         JOIN teams ta ON g.team_a_id = ta.id
+         JOIN teams tb ON g.team_b_id = tb.id
+         WHERE g.id = $1 AND g.user_id = $2`,
+        [gameId, userId]
+    );
+    return gameResult.rows[0] || null;
+}
+
+async function attachAttendingAndGoals(game, gameId) {
+    const playersResult = await query(
+        `SELECT tp.* FROM game_attending_players gap
+         JOIN team_players tp ON gap.team_player_id = tp.id
+         WHERE gap.game_id = $1
+         ORDER BY tp.team_id, tp.player_number`,
+        [gameId]
+    );
+    game.attending_players = playersResult.rows;
+    const goalsResult = await query('SELECT * FROM goals WHERE game_id = $1 ORDER BY created_at', [gameId]);
+    game.goals = goalsResult.rows;
 }
 
 module.exports = async function handler(req, res) {
-    // Log the incoming request for debugging
-    console.log('V2 catch-all received request:', {
-        method: req.method,
-        url: req.url,
-        path: req.url,
-        query: req.query,
-        rawUrl: req.url
-    });
-    
-    // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -75,107 +75,57 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    // Check database connection
     if (!process.env.HA_DATABASE_URL) {
-        return res.status(500).json({ 
-            error: 'Server configuration error: Database connection not configured'
-        });
+        return res.status(500).json({ error: 'Server configuration error: Database connection not configured' });
     }
-    
-    // Vercel serverless functions automatically parse JSON bodies
-    // But we need to ensure it's an object
+
     if ((req.method === 'POST' || req.method === 'PUT') && typeof req.body === 'string') {
         try {
             req.body = JSON.parse(req.body);
         } catch (e) {
-            console.error('Error parsing request body:', e);
             req.body = {};
         }
     }
-    
-    // Log the request for debugging
-    console.log('V2 catch-all request:', {
-        method: req.method,
-        url: req.url,
-        bodyType: typeof req.body,
-        body: req.body,
-        hasAction: req.body && req.body._action,
-        action: req.body && req.body._action,
-        hasId: req.body && req.body.id,
-        id: req.body && req.body.id
-    });
-    
-    // EARLY HANDLING: Check for home-team/players POST with _action=update before route parsing
-    // This ensures the update handler is matched before the add player handler
+
     const rawUrl = req.url || '';
-    const isHomeTeamPlayersUpdate = req.method === 'POST' && 
-                                    req.body && 
-                                    typeof req.body === 'object' &&
-                                    req.body._action === 'update' && 
-                                    req.body.id && 
-                                    (rawUrl.includes('home-team/players') || rawUrl.includes('home-team/players/'));
-    
-    console.log('Checking early handler:', {
-        isPost: req.method === 'POST',
-        hasBody: !!req.body,
-        bodyType: typeof req.body,
-        action: req.body && req.body._action,
-        hasId: req.body && req.body.id,
-        urlIncludes: rawUrl.includes('home-team/players'),
-        isHomeTeamPlayersUpdate
-    });
-    
-    if (isHomeTeamPlayersUpdate) {
-        console.log('Early handler: home-team/players update detected:', { url: rawUrl, body: req.body });
-        
-        // Authenticate first
+
+    // POST teams/players — update number (_action=update)
+    const isTeamPlayersUpdate =
+        req.method === 'POST' &&
+        req.body &&
+        req.body._action === 'update' &&
+        req.body.id &&
+        (rawUrl.includes('teams/players') || rawUrl.includes('api/v2/teams/players'));
+
+    if (isTeamPlayersUpdate) {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
-        
-        if (!token) {
-            return res.status(401).json({ error: 'Access token required' });
-        }
-        
+        if (!token) return res.status(401).json({ error: 'Access token required' });
         try {
             const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
-            req.user = decoded;
-            
-            const playerId = req.body.id;
-            const { player_number } = req.body;
-            const userId = req.user.userId;
-            
-            console.log('Early handler: Updating player number:', { playerId, player_number, userId });
-            
+            const userId = decoded.userId;
+            const playerId = parseInt(req.body.id, 10);
+            const player_number = req.body.player_number;
             if (player_number === undefined || player_number === null) {
                 return res.status(400).json({ error: 'Player number is required' });
             }
-            
-            // Verify player belongs to user's home team
             const verifyResult = await query(
-                `SELECT htp.id FROM home_team_players htp
-                 JOIN home_teams ht ON htp.home_team_id = ht.id
-                 WHERE htp.id = $1 AND ht.user_id = $2`,
-                [parseInt(playerId), userId]
+                `SELECT tp.id FROM team_players tp
+                 JOIN teams t ON tp.team_id = t.id
+                 WHERE tp.id = $1 AND t.user_id = $2`,
+                [playerId, userId]
             );
-            
             if (verifyResult.rows.length === 0) {
                 return res.status(404).json({ error: 'Player not found' });
             }
-            
-            // Update player number
             try {
                 const result = await query(
-                    'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
-                    [parseInt(player_number), parseInt(playerId)]
+                    'UPDATE team_players SET player_number = $1 WHERE id = $2 RETURNING *',
+                    [parseInt(player_number, 10), playerId]
                 );
-                
-                console.log('Early handler: Player number updated successfully:', result.rows[0]);
                 return res.json(result.rows[0]);
             } catch (dbError) {
-                console.error('Early handler: Database error updating player number:', dbError);
-                if (dbError.code === '23505') { // Unique constraint violation
-                    return res.status(400).json({ error: 'Player number already exists' });
-                }
+                if (dbError.code === '23505') return res.status(400).json({ error: 'Player number already exists' });
                 throw dbError;
             }
         } catch (err) {
@@ -185,69 +135,44 @@ module.exports = async function handler(req, res) {
             throw err;
         }
     }
-    
-    // EARLY HANDLING: Check raw URL for away-teams PUT/DELETE before route parsing
-    // This handles cases where Vercel's catch-all routing might not work correctly
-    // Also handle POST with _method=PUT/DELETE workaround
-    // Note: rawUrl was already defined above
+
     const isPutWorkaround = req.method === 'POST' && req.body && req.body._method === 'PUT';
     const isDeleteWorkaround = req.method === 'POST' && req.body && req.body._method === 'DELETE';
-    if ((req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) && rawUrl.includes('/away-teams/') && !rawUrl.includes('/players')) {
-        // Extract team ID from URL pattern: /api/v2/away-teams/123 or away-teams/123
-        const match = rawUrl.match(/away-teams\/(\d+)/);
+    if (
+        (req.method === 'PUT' || req.method === 'DELETE' || isPutWorkaround || isDeleteWorkaround) &&
+        rawUrl.includes('/teams/') &&
+        !rawUrl.includes('/players')
+    ) {
+        const match = rawUrl.match(/teams\/(\d+)/);
         if (match) {
             const teamId = match[1];
-            const actualMethod = isPutWorkaround ? 'PUT' : (isDeleteWorkaround ? 'DELETE' : req.method);
-            console.log('Early away-teams PUT/DELETE handler:', { teamId, method: req.method, actualMethod, url: rawUrl, isPutWorkaround, isDeleteWorkaround });
-            
-            // Authenticate first
+            const actualMethod = isPutWorkaround ? 'PUT' : isDeleteWorkaround ? 'DELETE' : req.method;
             const authHeader = req.headers['authorization'];
             const token = authHeader && authHeader.split(' ')[1];
-            
-            if (!token) {
-                return res.status(401).json({ error: 'Access token required' });
-            }
-            
+            if (!token) return res.status(401).json({ error: 'Access token required' });
             try {
                 const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
                 req.user = decoded;
-                
-                // Remove _method from body if present
-                if (req.body && req.body._method) {
-                    delete req.body._method;
-                }
-                
+                if (req.body && req.body._method) delete req.body._method;
+                const userId = req.user.userId;
+
                 if (actualMethod === 'PUT' || isPutWorkaround) {
-                    const userId = req.user.userId;
                     const { team_name, team_color } = req.body || {};
-
-                    if (!team_name) {
-                        return res.status(400).json({ error: 'Team name is required' });
-                    }
-
+                    if (!team_name) return res.status(400).json({ error: 'Team name is required' });
                     const result = await query(
-                        'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-                        [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
+                        'UPDATE teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                        [team_name, team_color || '#4ecdc4', parseInt(teamId, 10), userId]
                     );
-
-                    if (result.rows.length === 0) {
-                        return res.status(404).json({ error: 'Away team not found' });
-                    }
-
+                    if (result.rows.length === 0) return res.status(404).json({ error: 'Team not found' });
                     return res.json(result.rows[0]);
-                } else if (actualMethod === 'DELETE' || isDeleteWorkaround) {
-                    const userId = req.user.userId;
-
-                    const result = await query(
-                        'DELETE FROM away_teams WHERE id = $1 AND user_id = $2 RETURNING id',
-                        [parseInt(teamId), userId]
-                    );
-
-                    if (result.rows.length === 0) {
-                        return res.status(404).json({ error: 'Away team not found' });
-                    }
-
-                    return res.json({ message: 'Away team deleted' });
+                }
+                if (actualMethod === 'DELETE' || isDeleteWorkaround) {
+                    const result = await query('DELETE FROM teams WHERE id = $1 AND user_id = $2 RETURNING id', [
+                        parseInt(teamId, 10),
+                        userId
+                    ]);
+                    if (result.rows.length === 0) return res.status(404).json({ error: 'Team not found' });
+                    return res.json({ message: 'Team deleted' });
                 }
             } catch (err) {
                 if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
@@ -257,115 +182,44 @@ module.exports = async function handler(req, res) {
             }
         }
     }
-    
-    // EARLY HANDLING: Check for games/:id POST with _action=update-attending-players
-    // This ensures the route is caught even if Vercel routing is problematic
-    // Check if this is a games route first
+
     const isGamesRoute = rawUrl.includes('games/') && !rawUrl.includes('goals');
     if (req.method === 'POST' && isGamesRoute) {
-        console.log('Early games route check:', { 
-            method: req.method, 
-            url: rawUrl, 
-            body: req.body, 
-            bodyType: typeof req.body,
-            hasAction: req.body && req.body._action,
-            action: req.body && req.body._action
-        });
-        
-        // Try multiple URL patterns: /api/v2/games/1, /games/1, games/1
         const match = rawUrl.match(/(?:api\/v2\/)?games\/(\d+)/) || rawUrl.match(/games\/(\d+)/);
         if (match && req.body && req.body._action === 'update-attending-players') {
-            const gameId = match[1];
-            console.log('Early games update-attending-players handler MATCHED:', { gameId, url: rawUrl, rawUrl, body: req.body, bodyType: typeof req.body });
-            
-            // Authenticate first
             const authHeader = req.headers['authorization'];
             const token = authHeader && authHeader.split(' ')[1];
-            
-            if (!token) {
-                return res.status(401).json({ error: 'Access token required' });
-            }
-            
+            if (!token) return res.status(401).json({ error: 'Access token required' });
             try {
                 const decoded = jwt.verify(token, process.env.HA_JWT_SECRET || 'default-secret-change-in-production');
-                req.user = decoded;
-                
-                const userId = req.user.userId;
-                const { attending_home_player_ids } = req.body || {};
-                
-                console.log('Updating attending players (early handler):', { gameId, userId, attending_home_player_ids });
-                
-                // Remove _action from body
+                const userId = decoded.userId;
+                const gameId = parseInt(match[1], 10);
+                const { attending_player_ids } = req.body || {};
                 delete req.body._action;
 
-                // Verify game belongs to user
-                const gameResult = await query(
-                    'SELECT id FROM games WHERE id = $1 AND user_id = $2',
-                    [parseInt(gameId), userId]
-                );
+                const gameRow = await fetchGameRow(userId, gameId);
+                if (!gameRow) return res.status(404).json({ error: 'Game not found' });
 
-                if (gameResult.rows.length === 0) {
-                    console.error('Game not found:', { gameId, userId });
-                    return res.status(404).json({ error: 'Game not found' });
-                }
-
-                // Delete all existing attending players
-                await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
-                console.log('Deleted existing attending players for game:', gameId);
-
-                // Add new attending players
-                if (attending_home_player_ids && attending_home_player_ids.length > 0) {
-                    console.log('Adding attending players:', attending_home_player_ids);
-                    for (const playerId of attending_home_player_ids) {
-                        // Verify player belongs to user's home team
-                        const verifyResult = await query(
-                            `SELECT htp.id FROM home_team_players htp
-                             JOIN home_teams ht ON htp.home_team_id = ht.id
-                             WHERE htp.id = $1 AND ht.user_id = $2`,
-                            [playerId, userId]
+                await query('DELETE FROM game_attending_players WHERE game_id = $1', [gameId]);
+                const a = gameRow.team_a_id;
+                const b = gameRow.team_b_id;
+                const ids = Array.isArray(attending_player_ids) ? attending_player_ids : [];
+                for (const pid of ids) {
+                    const ok = await query(
+                        `SELECT tp.id FROM team_players tp
+                         WHERE tp.id = $1 AND (tp.team_id = $2 OR tp.team_id = $3)`,
+                        [pid, a, b]
+                    );
+                    if (ok.rows.length > 0) {
+                        await query(
+                            'INSERT INTO game_attending_players (game_id, team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                            [gameId, pid]
                         );
-
-                        if (verifyResult.rows.length > 0) {
-                            await query(
-                                'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                                [parseInt(gameId), playerId]
-                            );
-                            console.log('Added attending player:', playerId);
-                        } else {
-                            console.warn('Player not found or does not belong to user:', { playerId, userId });
-                        }
                     }
-                } else {
-                    console.log('No attending players to add');
                 }
-
-                // Return updated game with attending players
-                const updatedGameResult = await query(
-                    `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
-                     FROM games g
-                     JOIN away_teams at ON g.away_team_id = at.id
-                     WHERE g.id = $1 AND g.user_id = $2`,
-                    [parseInt(gameId), userId]
-                );
-
-                const updatedGame = updatedGameResult.rows[0];
-
-                // Get attending home players
-                const playersResult = await query(
-                    `SELECT htp.* FROM game_home_players ghp
-                     JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                     WHERE ghp.game_id = $1
-                     ORDER BY htp.player_number`,
-                    [parseInt(gameId)]
-                );
-                updatedGame.attending_home_players = playersResult.rows;
-                
-                console.log('Returning updated game with attending players:', { 
-                    gameId, 
-                    attendingCount: updatedGame.attending_home_players.length 
-                });
-
-                return res.json(updatedGame);
+                const game = await fetchGameRow(userId, gameId);
+                await attachAttendingAndGoals(game, gameId);
+                return res.json(game);
             } catch (err) {
                 if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
                     return res.status(403).json({ error: 'Invalid or expired token' });
@@ -374,987 +228,447 @@ module.exports = async function handler(req, res) {
             }
         }
     }
-    
-    // Authenticate (except for health checks)
+
     authenticateToken(req, res, async () => {
         try {
             const route = getRoute(req);
             const method = req.method;
-                
-            console.log('V2 API Request:', { url: req.url, route, method, rawUrl: req.url });
-            
-            // Early check for away-teams routes to ensure they're handled
-            if (route && (route.startsWith('away-teams') || req.url.includes('away-teams'))) {
-                console.log('Early away-teams route detection:', { route, method, url: req.url });
-            }
+            const userId = req.user.userId;
 
-            // Route: /api/v2/home-team
-            if (route === 'home-team') {
+            // --- /teams ---
+            if (route === 'teams') {
                 if (method === 'GET') {
-                    // Get or create home team
-                    const userId = req.user.userId;
-                    
-                    let result = await query(
-                        'SELECT * FROM home_teams WHERE user_id = $1',
-                        [userId]
-                    );
-
-                    if (result.rows.length === 0) {
-                        // Create default home team
-                        const createResult = await query(
-                            'INSERT INTO home_teams (user_id, team_name, team_color) VALUES ($1, $2, $3) RETURNING *',
-                            [userId, 'Home Team', '#ff6b6b']
-                        );
-                        const homeTeam = createResult.rows[0];
-                        homeTeam.players = [];
-                        return res.json(homeTeam);
-                    }
-
-                    const homeTeam = result.rows[0];
-                    
-                    // Get players
-                    const playersResult = await query(
-                        'SELECT * FROM home_team_players WHERE home_team_id = $1 ORDER BY player_number',
-                        [homeTeam.id]
-                    );
-                    homeTeam.players = playersResult.rows;
-
-                    return res.json(homeTeam);
-                } else if (method === 'PUT') {
-                    // Update home team
-                    const userId = req.user.userId;
-                    const { team_name, team_color } = req.body;
-
-                    const result = await query(
-                        'UPDATE home_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $3 RETURNING *',
-                        [team_name, team_color, userId]
-                    );
-
-                    if (result.rows.length === 0) {
-                        return res.status(404).json({ error: 'Home team not found' });
-                    }
-
-                    return res.json(result.rows[0]);
-                }
-            }
-
-            // Route: /api/v2/home-team/players
-            // Handle both exact match and with ID: home-team/players or home-team/players/123
-            if (route === 'home-team/players' || route.startsWith('home-team/players')) {
-                const parts = route.split('/').filter(p => p);
-                console.log('Home-team players route matched:', { route, parts, method, body: req.body });
-                
-                // Handle POST with _action='update' for updating player number (fallback workaround)
-                // This should be checked FIRST before other POST handlers
-                if (method === 'POST' && req.body && req.body._action === 'update' && req.body.id) {
-                    const playerId = req.body.id;
-                    const { player_number } = req.body;
-                    const userId = req.user.userId;
-                    
-                    console.log('Updating player number (POST fallback):', { playerId, player_number, userId });
-                    
-                    if (!player_number && player_number !== 0) {
-                        return res.status(400).json({ error: 'Player number is required' });
-                    }
-                    
-                    // Verify player belongs to user's home team
-                    const verifyResult = await query(
-                        `SELECT htp.id FROM home_team_players htp
-                         JOIN home_teams ht ON htp.home_team_id = ht.id
-                         WHERE htp.id = $1 AND ht.user_id = $2`,
-                        [parseInt(playerId), userId]
-                    );
-                    
-                    if (verifyResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Player not found' });
-                    }
-                    
-                    // Update player number
-                    try {
-                        const result = await query(
-                            'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
-                            [parseInt(player_number), parseInt(playerId)]
-                        );
-                        
-                        console.log('Player number updated successfully:', result.rows[0]);
-                        return res.json(result.rows[0]);
-                    } catch (dbError) {
-                        console.error('Database error updating player number:', dbError);
-                        if (dbError.code === '23505') { // Unique constraint violation
-                            return res.status(400).json({ error: 'Player number already exists' });
-                        }
-                        throw dbError;
-                    }
-                } 
-                // Handle PUT or POST with _method=PUT for updating player number with ID in route
-                else if ((method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT')) && parts.length === 3 && parts[0] === 'home-team' && parts[1] === 'players') {
-                    const playerId = parts[2];
-                    const { player_number } = req.body || {};
-                    const userId = req.user.userId;
-                    
-                    console.log('Updating player number (PUT):', { playerId, player_number, userId });
-                    
-                    if (!player_number && player_number !== 0) {
-                        return res.status(400).json({ error: 'Player number is required' });
-                    }
-                    
-                    // Verify player belongs to user's home team
-                    const verifyResult = await query(
-                        `SELECT htp.id FROM home_team_players htp
-                         JOIN home_teams ht ON htp.home_team_id = ht.id
-                         WHERE htp.id = $1 AND ht.user_id = $2`,
-                        [parseInt(playerId), userId]
-                    );
-                    
-                    if (verifyResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Player not found' });
-                    }
-                    
-                    // Update player number
-                    try {
-                        const result = await query(
-                            'UPDATE home_team_players SET player_number = $1 WHERE id = $2 RETURNING *',
-                            [parseInt(player_number), parseInt(playerId)]
-                        );
-                        
-                        console.log('Player number updated successfully:', result.rows[0]);
-                        return res.json(result.rows[0]);
-                    } catch (dbError) {
-                        console.error('Database error updating player number:', dbError);
-                        if (dbError.code === '23505') { // Unique constraint violation
-                            return res.status(400).json({ error: 'Player number already exists' });
-                        }
-                        throw dbError;
-                    }
-                } 
-                // Handle POST for adding new player (only if not updating)
-                else if (method === 'POST' && (!req.body || !req.body._action)) {
-                    // Add home team player
-                    const userId = req.user.userId;
-                    const { player_name, player_number } = req.body;
-
-                    if (!player_name || !player_number) {
-                        return res.status(400).json({ error: 'Player name and number are required' });
-                    }
-
-                    // Get home team
-                    const teamResult = await query('SELECT id FROM home_teams WHERE user_id = $1', [userId]);
-                    if (teamResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Home team not found' });
-                    }
-
-                    const homeTeamId = teamResult.rows[0].id;
-
-                    try {
-                        const result = await query(
-                            'INSERT INTO home_team_players (home_team_id, player_name, player_number) VALUES ($1, $2, $3) RETURNING *',
-                            [homeTeamId, player_name, parseInt(player_number)]
-                        );
-
-                        return res.status(201).json(result.rows[0]);
-                    } catch (dbError) {
-                        if (dbError.code === '23505') { // Unique constraint violation
-                            return res.status(400).json({ error: 'Player number already exists' });
-                        }
-                        throw dbError;
-                    }
-                } else if (method === 'DELETE') {
-                    // Delete home team player - route will be like home-team/players/123
-                    const userId = req.user.userId;
-                    const parts = route.split('/');
-                    const playerId = parts[parts.length - 1]; // Get ID from last part of route
-
-                    if (!playerId || isNaN(playerId)) {
-                        return res.status(400).json({ error: 'Invalid player ID' });
-                    }
-
-                    // Verify player belongs to user's home team
-                    const verifyResult = await query(
-                        `SELECT htp.id FROM home_team_players htp
-                         JOIN home_teams ht ON htp.home_team_id = ht.id
-                         WHERE htp.id = $1 AND ht.user_id = $2`,
-                        [parseInt(playerId), userId]
-                    );
-
-                    if (verifyResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Player not found' });
-                    }
-
-                    await query('DELETE FROM home_team_players WHERE id = $1', [parseInt(playerId)]);
-                    return res.json({ message: 'Player deleted' });
-                } else {
-                    return res.status(405).json({ error: 'Method not allowed' });
-                }
-            }
-
-            // ========== AWAY TEAMS ROUTES ==========
-            
-            // Route: /api/v2/away-teams
-            if (route === 'away-teams') {
-                if (method === 'GET') {
-                    // Get all away teams
-                    const userId = req.user.userId;
-                    
-                    const result = await query(
-                        'SELECT * FROM away_teams WHERE user_id = $1 ORDER BY team_name',
-                        [userId]
-                    );
-
-                    const teams = result.rows;
-                    
-                    // Get players for each team
-                    for (const team of teams) {
-                        const playersResult = await query(
-                            'SELECT * FROM away_team_players WHERE away_team_id = $1 ORDER BY player_number',
-                            [team.id]
-                        );
-                        team.players = playersResult.rows;
-                    }
-
+                    const teams = await loadTeamsWithPlayers(userId);
                     return res.json(teams);
-                } else if (method === 'POST') {
-                    const userId = req.user.userId;
+                }
+                if (method === 'POST') {
                     const { id, _action, team_name, team_color } = req.body || {};
-                    
-                    // Handle update action (workaround for Vercel routing issue with IDs in path)
                     if (_action === 'update' && id) {
-                        if (!team_name) {
-                            return res.status(400).json({ error: 'Team name is required' });
-                        }
-
-                        console.log('Updating away team via POST with id in body:', { id, userId, team_name, team_color });
-
+                        if (!team_name) return res.status(400).json({ error: 'Team name is required' });
                         const result = await query(
-                            'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-                            [team_name, team_color || '#4ecdc4', parseInt(id), userId]
+                            'UPDATE teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                            [team_name, team_color || '#4ecdc4', parseInt(id, 10), userId]
                         );
-
-                        if (result.rows.length === 0) {
-                            return res.status(404).json({ error: 'Away team not found' });
-                        }
-
+                        if (result.rows.length === 0) return res.status(404).json({ error: 'Team not found' });
                         return res.json(result.rows[0]);
                     }
-                    
-                    // Create away team (normal POST)
-                    if (!team_name) {
-                        return res.status(400).json({ error: 'Team name is required' });
-                    }
-
+                    if (!team_name) return res.status(400).json({ error: 'Team name is required' });
                     try {
                         const result = await query(
-                            'INSERT INTO away_teams (user_id, team_name, team_color) VALUES ($1, $2, $3) RETURNING *',
+                            'INSERT INTO teams (user_id, team_name, team_color) VALUES ($1, $2, $3) RETURNING *',
                             [userId, team_name, team_color || '#4ecdc4']
                         );
-
                         const team = result.rows[0];
                         team.players = [];
                         return res.status(201).json(team);
                     } catch (dbError) {
-                        if (dbError.code === '23505') {
-                            return res.status(400).json({ error: 'Team name already exists' });
-                        }
+                        if (dbError.code === '23505') return res.status(400).json({ error: 'Team name already exists' });
                         throw dbError;
                     }
                 }
             }
 
-            // Route: /api/v2/away-teams/:id
-            if (route.startsWith('away-teams/')) {
-                const parts = route.split('/').filter(p => p); // Filter out empty strings
-                console.log('Away-teams route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
-                
-                if (parts.length === 2 && parts[0] === 'away-teams') {
-                    // away-teams/:id (PUT or DELETE, or POST with _method workaround)
+            if (route.startsWith('teams/')) {
+                const parts = route.split('/').filter(Boolean);
+                if (parts.length === 2 && parts[0] === 'teams') {
                     const teamId = parts[1];
                     const isPutMethod = method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT');
                     const isDeleteMethod = method === 'DELETE' || (method === 'POST' && req.body && req.body._method === 'DELETE');
-                    
-                    console.log('Processing away-teams/:id route:', { teamId, method, isPutMethod, isDeleteMethod, route, parts, body: req.body });
-                    
                     if (isPutMethod) {
-                        // Remove _method from body if present
-                        if (req.body && req.body._method) {
-                            delete req.body._method;
-                        }
-                        const userId = req.user.userId;
+                        if (req.body && req.body._method) delete req.body._method;
                         const { team_name, team_color } = req.body || {};
-
-                        if (!team_name) {
-                            return res.status(400).json({ error: 'Team name is required' });
-                        }
-
-                        console.log('Updating away team:', { teamId, userId, team_name, team_color, body: req.body });
-
+                        if (!team_name) return res.status(400).json({ error: 'Team name is required' });
                         const result = await query(
-                            'UPDATE away_teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
-                            [team_name, team_color || '#4ecdc4', parseInt(teamId), userId]
+                            'UPDATE teams SET team_name = $1, team_color = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND user_id = $4 RETURNING *',
+                            [team_name, team_color || '#4ecdc4', parseInt(teamId, 10), userId]
                         );
-
-                        if (result.rows.length === 0) {
-                            return res.status(404).json({ error: 'Away team not found' });
-                        }
-
+                        if (result.rows.length === 0) return res.status(404).json({ error: 'Team not found' });
                         return res.json(result.rows[0]);
-                    } else if (isDeleteMethod) {
-                        // Remove _method from body if present
-                        if (req.body && req.body._method) {
-                            delete req.body._method;
-                        }
-                        const userId = req.user.userId;
-
-                        const result = await query(
-                            'DELETE FROM away_teams WHERE id = $1 AND user_id = $2 RETURNING id',
-                            [parseInt(teamId), userId]
-                        );
-
-                        if (result.rows.length === 0) {
-                            return res.status(404).json({ error: 'Away team not found' });
-                        }
-
-                        return res.json({ message: 'Away team deleted' });
+                    }
+                    if (isDeleteMethod) {
+                        if (req.body && req.body._method) delete req.body._method;
+                        const result = await query('DELETE FROM teams WHERE id = $1 AND user_id = $2 RETURNING id', [
+                            parseInt(teamId, 10),
+                            userId
+                        ]);
+                        if (result.rows.length === 0) return res.status(404).json({ error: 'Team not found' });
+                        return res.json({ message: 'Team deleted' });
                     }
                 } else if (parts.length === 4 && parts[2] === 'players') {
-                    // away-teams/:id/players/:playerId (DELETE)
                     const teamId = parts[1];
                     const playerId = parts[3];
-                    
                     if (method === 'DELETE') {
-                        const userId = req.user.userId;
-
-                        // Verify player belongs to user's away team
                         const verifyResult = await query(
-                            `SELECT atp.id FROM away_team_players atp
-                             JOIN away_teams at ON atp.away_team_id = at.id
-                             WHERE atp.id = $1 AND at.id = $2 AND at.user_id = $3`,
-                            [parseInt(playerId), parseInt(teamId), userId]
+                            `SELECT tp.id FROM team_players tp
+                             JOIN teams t ON tp.team_id = t.id
+                             WHERE tp.id = $1 AND t.id = $2 AND t.user_id = $3`,
+                            [parseInt(playerId, 10), parseInt(teamId, 10), userId]
                         );
-
-                        if (verifyResult.rows.length === 0) {
-                            return res.status(404).json({ error: 'Player not found' });
-                        }
-
-                        await query('DELETE FROM away_team_players WHERE id = $1', [parseInt(playerId)]);
+                        if (verifyResult.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+                        await query('DELETE FROM team_players WHERE id = $1', [parseInt(playerId, 10)]);
                         return res.json({ message: 'Player deleted' });
                     }
+                    if (method === 'PUT') {
+                        const { player_number } = req.body || {};
+                        if (player_number === undefined) return res.status(400).json({ error: 'Player number is required' });
+                        const verifyResult = await query(
+                            `SELECT tp.id FROM team_players tp
+                             JOIN teams t ON tp.team_id = t.id
+                             WHERE tp.id = $1 AND t.id = $2 AND t.user_id = $3`,
+                            [parseInt(playerId, 10), parseInt(teamId, 10), userId]
+                        );
+                        if (verifyResult.rows.length === 0) return res.status(404).json({ error: 'Player not found' });
+                        try {
+                            const result = await query(
+                                'UPDATE team_players SET player_number = $1 WHERE id = $2 RETURNING *',
+                                [parseInt(player_number, 10), parseInt(playerId, 10)]
+                            );
+                            return res.json(result.rows[0]);
+                        } catch (dbError) {
+                            if (dbError.code === '23505') return res.status(400).json({ error: 'Player number already exists' });
+                            throw dbError;
+                        }
+                    }
                 } else if (parts.length === 3 && parts[2] === 'players') {
-                    // away-teams/:id/players (POST)
                     const teamId = parts[1];
-                    
-                    console.log('Processing away-teams players POST route:', { teamId, method, route, parts, body: req.body });
-                    
-                    if (method === 'POST') {
-                        const userId = req.user.userId;
+                    if (method === 'POST' && (!req.body || !req.body._action)) {
                         const { player_name, player_number } = req.body || {};
-
                         if (!player_name || !player_number) {
                             return res.status(400).json({ error: 'Player name and number are required' });
                         }
-
-                        if (player_number < 1 || player_number > 99) {
-                            return res.status(400).json({ error: 'Player number must be between 1 and 99' });
-                        }
-
-                        // Verify team belongs to user
-                        const verifyResult = await query(
-                            'SELECT id FROM away_teams WHERE id = $1 AND user_id = $2',
-                            [parseInt(teamId), userId]
-                        );
-
-                        if (verifyResult.rows.length === 0) {
-                            return res.status(404).json({ error: 'Away team not found' });
-                        }
-
+                        const verifyResult = await query('SELECT id FROM teams WHERE id = $1 AND user_id = $2', [
+                            parseInt(teamId, 10),
+                            userId
+                        ]);
+                        if (verifyResult.rows.length === 0) return res.status(404).json({ error: 'Team not found' });
                         try {
                             const result = await query(
-                                'INSERT INTO away_team_players (away_team_id, player_name, player_number) VALUES ($1, $2, $3) RETURNING *',
-                                [parseInt(teamId), player_name, parseInt(player_number)]
+                                'INSERT INTO team_players (team_id, player_name, player_number) VALUES ($1, $2, $3) RETURNING *',
+                                [parseInt(teamId, 10), player_name, parseInt(player_number, 10)]
                             );
-
                             return res.status(201).json(result.rows[0]);
                         } catch (dbError) {
-                            if (dbError.code === '23505') {
-                                return res.status(400).json({ error: 'Player number already exists' });
-                            }
+                            if (dbError.code === '23505') return res.status(400).json({ error: 'Player number already exists' });
                             throw dbError;
                         }
                     }
                 }
             }
 
-            // ========== GAMES ROUTES ==========
-            
-            // Route: /api/v2/games
+            // --- /teams/players (POST update handled early) ---
+
+            // --- /games ---
             if (route === 'games') {
-                // Handle POST with _action='record-goal' (fallback workaround for goals)
                 if (method === 'POST' && req.body && req.body._action === 'record-goal' && req.body.game_id) {
                     const gameId = req.body.game_id;
-                    console.log('Games record-goal handler (fallback):', { gameId, body: req.body });
-                    const userId = req.user.userId;
                     const scoringTeam = req.body.scoring_team || req.body.team;
-                    // Support both scorer_id/scorer_player_id and assist1_id/assist1_player_id for compatibility
                     const scorerPlayerId = req.body.scorer_player_id || req.body.scorer_id;
                     const assist1PlayerId = req.body.assist1_player_id || req.body.assist1_id;
                     const assist2PlayerId = req.body.assist2_player_id || req.body.assist2_id;
-                    const { scorer_is_home, assist1_is_home, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
-                    
-                    // Remove _action and game_id from body
-                    delete req.body._action;
-                    delete req.body.game_id;
+                    const {
+                        scorer_is_team_a,
+                        assist1_is_team_a,
+                        assist2_is_team_a,
+                        period,
+                        time_remaining,
+                        announcement_text
+                    } = req.body || {};
 
-                    // Verify game belongs to user
-                    const gameResult = await query(
-                        'SELECT id FROM games WHERE id = $1 AND user_id = $2',
-                        [parseInt(gameId), userId]
-                    );
+                    const gameResult = await query('SELECT id FROM games WHERE id = $1 AND user_id = $2', [
+                        parseInt(gameId, 10),
+                        userId
+                    ]);
+                    if (gameResult.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
 
-                    if (gameResult.rows.length === 0) {
-                        console.error('Game not found:', { gameId, userId });
-                        return res.status(404).json({ error: 'Game not found' });
-                    }
-
-                    // Insert goal - match database schema
                     const result = await query(
-                        `INSERT INTO goals (game_id, scoring_team, scorer_player_id, scorer_is_home, assist1_player_id, assist1_is_home, assist2_player_id, assist2_is_home, period, time_remaining, announcement_text)
+                        `INSERT INTO goals (game_id, scoring_team, scorer_player_id, scorer_is_team_a,
+                         assist1_player_id, assist1_is_team_a, assist2_player_id, assist2_is_team_a,
+                         period, time_remaining, announcement_text)
                          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
                         [
-                            parseInt(gameId), 
-                            scoringTeam, 
-                            scorerPlayerId || null, 
-                            scorer_is_home !== undefined ? scorer_is_home : true,
-                            assist1PlayerId || null, 
-                            assist1_is_home || null,
-                            assist2PlayerId || null, 
-                            assist2_is_home || null,
-                            period || null, 
+                            parseInt(gameId, 10),
+                            scoringTeam,
+                            scorerPlayerId || null,
+                            scorer_is_team_a !== undefined ? scorer_is_team_a : true,
+                            assist1PlayerId || null,
+                            assist1_is_team_a != null ? assist1_is_team_a : null,
+                            assist2PlayerId || null,
+                            assist2_is_team_a != null ? assist2_is_team_a : null,
+                            period || null,
                             time_remaining || null,
                             announcement_text || null
                         ]
                     );
-                    
-                    console.log('Goal recorded successfully:', { goalId: result.rows[0].id, gameId });
                     return res.status(201).json(result.rows[0]);
                 }
-                // Handle POST with _action='update-attending-players' (fallback workaround)
-                else if (method === 'POST' && req.body && req.body._action === 'update-attending-players' && req.body.id) {
-                    const gameId = req.body.id;
-                    console.log('Games update-attending-players handler (fallback):', { gameId, body: req.body });
-                    const userId = req.user.userId;
-                    const { attending_home_player_ids } = req.body || {};
-                    
-                    // Remove _action and id from body
+
+                if (method === 'POST' && req.body && req.body._action === 'update-attending-players' && req.body.id) {
+                    const gameId = parseInt(req.body.id, 10);
                     delete req.body._action;
                     delete req.body.id;
+                    const { attending_player_ids } = req.body || {};
 
-                    // Verify game belongs to user
-                    const gameResult = await query(
-                        'SELECT id FROM games WHERE id = $1 AND user_id = $2',
-                        [parseInt(gameId), userId]
-                    );
+                    const gameRow = await fetchGameRow(userId, gameId);
+                    if (!gameRow) return res.status(404).json({ error: 'Game not found' });
 
-                    if (gameResult.rows.length === 0) {
-                        console.error('Game not found:', { gameId, userId });
-                        return res.status(404).json({ error: 'Game not found' });
-                    }
-
-                    // Delete all existing attending players
-                    await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
-                    console.log('Deleted existing attending players for game:', gameId);
-
-                    // Add new attending players
-                    if (attending_home_player_ids && attending_home_player_ids.length > 0) {
-                        console.log('Adding attending players:', attending_home_player_ids);
-                        for (const playerId of attending_home_player_ids) {
-                            // Verify player belongs to user's home team
-                            const verifyResult = await query(
-                                `SELECT htp.id FROM home_team_players htp
-                                 JOIN home_teams ht ON htp.home_team_id = ht.id
-                                 WHERE htp.id = $1 AND ht.user_id = $2`,
-                                [playerId, userId]
+                    await query('DELETE FROM game_attending_players WHERE game_id = $1', [gameId]);
+                    const a = gameRow.team_a_id;
+                    const b = gameRow.team_b_id;
+                    const ids = Array.isArray(attending_player_ids) ? attending_player_ids : [];
+                    for (const pid of ids) {
+                        const ok = await query(
+                            `SELECT tp.id FROM team_players tp
+                             WHERE tp.id = $1 AND (tp.team_id = $2 OR tp.team_id = $3)`,
+                            [pid, a, b]
+                        );
+                        if (ok.rows.length > 0) {
+                            await query(
+                                'INSERT INTO game_attending_players (game_id, team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                [gameId, pid]
                             );
-
-                            if (verifyResult.rows.length > 0) {
-                                await query(
-                                    'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                                    [parseInt(gameId), playerId]
-                                );
-                                console.log('Added attending player:', playerId);
-                            } else {
-                                console.warn('Player not found or does not belong to user:', { playerId, userId });
-                            }
                         }
-                    } else {
-                        console.log('No attending players to add');
                     }
-
-                    // Return updated game with attending players
-                    const updatedGameResult = await query(
-                        `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
-                         FROM games g
-                         JOIN away_teams at ON g.away_team_id = at.id
-                         WHERE g.id = $1 AND g.user_id = $2`,
-                        [parseInt(gameId), userId]
-                    );
-
-                    const updatedGame = updatedGameResult.rows[0];
-
-                    // Get attending home players
-                    const playersResult = await query(
-                        `SELECT htp.* FROM game_home_players ghp
-                         JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                         WHERE ghp.game_id = $1
-                         ORDER BY htp.player_number`,
-                        [parseInt(gameId)]
-                    );
-                    updatedGame.attending_home_players = playersResult.rows;
-                    
-                    console.log('Returning updated game with attending players:', { 
-                        gameId, 
-                        attendingCount: updatedGame.attending_home_players.length 
-                    });
-
-                    return res.json(updatedGame);
-                }
-                // Handle POST with _action='get' to get a single game (workaround for routing issues)
-                else if (method === 'POST' && req.body && req.body._action === 'get' && req.body.id) {
-                    const gameId = req.body.id;
-                    const userId = req.user.userId;
-                    console.log('Getting game via POST workaround:', { gameId, userId });
-
-                    const gameResult = await query(
-                        `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
-                         FROM games g
-                         JOIN away_teams at ON g.away_team_id = at.id
-                         WHERE g.id = $1 AND g.user_id = $2`,
-                        [parseInt(gameId), userId]
-                    );
-
-                    if (gameResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Game not found' });
-                    }
-
-                    const game = gameResult.rows[0];
-
-                    // Get attending home players
-                    const playersResult = await query(
-                        `SELECT htp.* FROM game_home_players ghp
-                         JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                         WHERE ghp.game_id = $1
-                         ORDER BY htp.player_number`,
-                        [parseInt(gameId)]
-                    );
-                    game.attending_home_players = playersResult.rows;
-
-                    // Get goals
-                    const goalsResult = await query(
-                        'SELECT * FROM goals WHERE game_id = $1 ORDER BY created_at',
-                        [parseInt(gameId)]
-                    );
-                    game.goals = goalsResult.rows;
-
+                    const game = await fetchGameRow(userId, gameId);
+                    await attachAttendingAndGoals(game, gameId);
                     return res.json(game);
                 }
-                // Handle POST with _action='update-goal' (fallback workaround for updating goal announcement)
-                else if (method === 'POST' && req.body && req.body._action === 'update-goal' && req.body.game_id && req.body.goal_id) {
-                    const gameId = req.body.game_id;
-                    const goalId = req.body.goal_id;
+
+                if (method === 'POST' && req.body && req.body._action === 'get' && req.body.id) {
+                    const gameId = parseInt(req.body.id, 10);
+                    const game = await fetchGameRow(userId, gameId);
+                    if (!game) return res.status(404).json({ error: 'Game not found' });
+                    await attachAttendingAndGoals(game, gameId);
+                    return res.json(game);
+                }
+
+                if (method === 'POST' && req.body && req.body._action === 'update-goal' && req.body.game_id && req.body.goal_id) {
+                    const gameId = parseInt(req.body.game_id, 10);
+                    const goalId = parseInt(req.body.goal_id, 10);
                     const { announcement_text } = req.body;
-                    const userId = req.user.userId;
-                    
-                    console.log('Updating goal announcement (fallback):', { gameId, goalId, announcement_text });
-                    
-                    // Verify goal belongs to user's game
                     const verifyResult = await query(
                         `SELECT g.id FROM goals g
                          JOIN games gm ON g.game_id = gm.id
                          WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
-                        [parseInt(goalId), parseInt(gameId), userId]
+                        [goalId, gameId, userId]
                     );
-
-                    if (verifyResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Goal not found' });
-                    }
-
-                    // Update announcement text
-                    const result = await query(
-                        'UPDATE goals SET announcement_text = $1 WHERE id = $2 RETURNING *',
-                        [announcement_text, parseInt(goalId)]
-                    );
-                    
-                    console.log('Goal announcement updated successfully:', { goalId });
+                    if (verifyResult.rows.length === 0) return res.status(404).json({ error: 'Goal not found' });
+                    const result = await query('UPDATE goals SET announcement_text = $1 WHERE id = $2 RETURNING *', [
+                        announcement_text,
+                        goalId
+                    ]);
                     return res.json(result.rows[0]);
                 }
-                
+
                 if (method === 'GET') {
-                    // Get all games
-                    const userId = req.user.userId;
-                    
                     const result = await query(
-                        `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color
+                        `SELECT g.*,
+                                ta.team_name AS team_a_name, ta.team_color AS team_a_color,
+                                tb.team_name AS team_b_name, tb.team_color AS team_b_color
                          FROM games g
-                         JOIN away_teams at ON g.away_team_id = at.id
+                         JOIN teams ta ON g.team_a_id = ta.id
+                         JOIN teams tb ON g.team_b_id = tb.id
                          WHERE g.user_id = $1
                          ORDER BY g.created_at DESC`,
                         [userId]
                     );
-
                     const games = result.rows;
-                    
-                    // Get attending home players for each game
                     for (const game of games) {
-                        const playersResult = await query(
-                            `SELECT htp.* FROM game_home_players ghp
-                             JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                             WHERE ghp.game_id = $1
-                             ORDER BY htp.player_number`,
+                        const pr = await query(
+                            `SELECT tp.* FROM game_attending_players gap
+                             JOIN team_players tp ON gap.team_player_id = tp.id
+                             WHERE gap.game_id = $1
+                             ORDER BY tp.team_id, tp.player_number`,
                             [game.id]
                         );
-                        game.attending_home_players = playersResult.rows;
+                        game.attending_players = pr.rows;
                     }
-
                     return res.json(games);
-                } else if (method === 'POST' && (!req.body || (!req.body._action || (req.body._action !== 'get' && req.body._action !== 'update-attending-players')))) {
-                    // Create game (only if not a get or update-attending-players action)
-                    const userId = req.user.userId;
-                    const { game_name, away_team_id, attending_home_player_ids } = req.body || {};
+                }
 
-                    // Verify away team belongs to user
-                    const teamResult = await query(
-                        'SELECT id FROM away_teams WHERE id = $1 AND user_id = $2',
-                        [away_team_id, userId]
-                    );
-
-                    if (teamResult.rows.length === 0) {
-                        return res.status(404).json({ error: 'Away team not found' });
+                if (
+                    method === 'POST' &&
+                    (!req.body ||
+                        !req.body._action ||
+                        (req.body._action !== 'get' &&
+                            req.body._action !== 'update-attending-players' &&
+                            req.body._action !== 'record-goal' &&
+                            req.body._action !== 'update-goal'))
+                ) {
+                    const { game_name, team_a_id, team_b_id, attending_player_ids } = req.body || {};
+                    const a = parseInt(team_a_id, 10);
+                    const b = parseInt(team_b_id, 10);
+                    if (!a || !b || a === b) {
+                        return res.status(400).json({ error: 'Two distinct teams are required' });
                     }
+                    const verify = await query('SELECT id FROM teams WHERE id = ANY($1::int[]) AND user_id = $2', [
+                        [a, b],
+                        userId
+                    ]);
+                    if (verify.rows.length !== 2) return res.status(404).json({ error: 'One or both teams not found' });
 
-                    // Create game
                     const gameResult = await query(
-                        'INSERT INTO games (user_id, game_name, away_team_id) VALUES ($1, $2, $3) RETURNING *',
-                        [userId, game_name || null, away_team_id]
+                        'INSERT INTO games (user_id, game_name, team_a_id, team_b_id) VALUES ($1, $2, $3, $4) RETURNING *',
+                        [userId, game_name || null, a, b]
                     );
-
                     const game = gameResult.rows[0];
 
-                    // Get all home team players
-                    const homeTeamResult = await query(
-                        'SELECT id FROM home_teams WHERE user_id = $1',
-                        [userId]
-                    );
-                    
-                    let playersToAdd = [];
-                    
-                    if (attending_home_player_ids && attending_home_player_ids.length > 0) {
-                        // Use provided player IDs
-                        playersToAdd = attending_home_player_ids;
-                    } else if (homeTeamResult.rows.length > 0) {
-                        // Default: Add all home team players as attending
-                        const homeTeamId = homeTeamResult.rows[0].id;
-                        const allPlayersResult = await query(
-                            'SELECT id FROM home_team_players WHERE home_team_id = $1',
-                            [homeTeamId]
-                        );
-                        playersToAdd = allPlayersResult.rows.map(p => p.id);
+                    let playersToAdd = Array.isArray(attending_player_ids) ? attending_player_ids : [];
+                    if (playersToAdd.length === 0) {
+                        const allA = await query('SELECT id FROM team_players WHERE team_id = $1', [a]);
+                        const allB = await query('SELECT id FROM team_players WHERE team_id = $1', [b]);
+                        playersToAdd = [...allA.rows.map((r) => r.id), ...allB.rows.map((r) => r.id)];
                     }
-
-                    // Add attending home players
-                    if (playersToAdd.length > 0) {
-                        for (const playerId of playersToAdd) {
-                            // Verify player belongs to user's home team
-                            const verifyResult = await query(
-                                `SELECT htp.id FROM home_team_players htp
-                                 JOIN home_teams ht ON htp.home_team_id = ht.id
-                                 WHERE htp.id = $1 AND ht.user_id = $2`,
-                                [playerId, userId]
+                    for (const pid of playersToAdd) {
+                        const ok = await query(
+                            `SELECT tp.id FROM team_players tp
+                             WHERE tp.id = $1 AND (tp.team_id = $2 OR tp.team_id = $3)`,
+                            [pid, a, b]
+                        );
+                        if (ok.rows.length > 0) {
+                            await query(
+                                'INSERT INTO game_attending_players (game_id, team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                [game.id, pid]
                             );
-
-                            if (verifyResult.rows.length > 0) {
-                                await query(
-                                    'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                                    [game.id, playerId]
-                                );
-                            }
                         }
                     }
-
-                    // Get attending players for response
-                    const playersResult = await query(
-                        `SELECT htp.* FROM game_home_players ghp
-                         JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                         WHERE ghp.game_id = $1
-                         ORDER BY htp.player_number`,
-                        [game.id]
-                    );
-                    game.attending_home_players = playersResult.rows;
-
-                    return res.status(201).json(game);
+                    const full = await fetchGameRow(userId, game.id);
+                    await attachAttendingAndGoals(full, game.id);
+                    return res.status(201).json(full);
                 }
             }
 
-            // Route: /api/v2/games/:id and /api/v2/games/:id/goals
             if (route.startsWith('games/')) {
-                const parts = route.split('/').filter(p => p);
-                console.log('Games route matched:', { route, parts, partsLength: parts.length, method, url: req.url });
-                
+                const parts = route.split('/').filter(Boolean);
                 if (parts.length >= 2 && parts[0] === 'games') {
                     const gameId = parts[1];
-                    console.log('Processing games route:', { gameId, method, route, parts, body: req.body });
-                    
-                    // Handle GET or POST with _action='get' (workaround for Vercel routing)
                     const isGet = method === 'GET' || (method === 'POST' && req.body && req.body._action === 'get');
-                    
+
                     if (isGet && parts.length === 2) {
-                        // Get single game with all details
-                        const userId = req.user.userId;
-                        console.log('Getting game:', { gameId, userId });
-                        
-                        // Remove _action from body if present
-                        if (req.body && req.body._action) {
-                            delete req.body._action;
-                        }
-
-                        const gameResult = await query(
-                            `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
-                             FROM games g
-                             JOIN away_teams at ON g.away_team_id = at.id
-                             WHERE g.id = $1 AND g.user_id = $2`,
-                            [parseInt(gameId), userId]
-                        );
-
-                        if (gameResult.rows.length === 0) {
-                            return res.status(404).json({ error: 'Game not found' });
-                        }
-
-                        const game = gameResult.rows[0];
-
-                        // Get attending home players
-                        const playersResult = await query(
-                            `SELECT htp.* FROM game_home_players ghp
-                             JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                             WHERE ghp.game_id = $1
-                             ORDER BY htp.player_number`,
-                            [parseInt(gameId)]
-                        );
-                        game.attending_home_players = playersResult.rows;
-
-                        // Get goals
-                        const goalsResult = await query(
-                            'SELECT * FROM goals WHERE game_id = $1 ORDER BY created_at',
-                            [parseInt(gameId)]
-                        );
-                        game.goals = goalsResult.rows;
-
+                        if (req.body && req.body._action) delete req.body._action;
+                        const game = await fetchGameRow(userId, parseInt(gameId, 10));
+                        if (!game) return res.status(404).json({ error: 'Game not found' });
+                        await attachAttendingAndGoals(game, parseInt(gameId, 10));
                         return res.json(game);
-                    } else if (parts.length === 2 && method === 'POST' && req.body && req.body._action === 'update-attending-players') {
-                        // Update attending players: POST /api/v2/games/:id with _action=update-attending-players
-                        console.log('Update attending players handler matched:', { gameId, body: req.body });
-                        const userId = req.user.userId;
-                        const { attending_home_player_ids } = req.body || {};
-                        
-                        console.log('Updating attending players:', { gameId, userId, attending_home_player_ids });
-                        
-                        // Remove _action from body
+                    }
+
+                    if (parts.length === 2 && method === 'POST' && req.body && req.body._action === 'update-attending-players') {
                         delete req.body._action;
-
-                        // Verify game belongs to user
-                        const gameResult = await query(
-                            'SELECT id FROM games WHERE id = $1 AND user_id = $2',
-                            [parseInt(gameId), userId]
-                        );
-
-                        if (gameResult.rows.length === 0) {
-                            console.error('Game not found:', { gameId, userId });
-                            return res.status(404).json({ error: 'Game not found' });
-                        }
-
-                        // Delete all existing attending players
-                        await query('DELETE FROM game_home_players WHERE game_id = $1', [parseInt(gameId)]);
-                        console.log('Deleted existing attending players for game:', gameId);
-
-                        // Add new attending players
-                        if (attending_home_player_ids && attending_home_player_ids.length > 0) {
-                            console.log('Adding attending players:', attending_home_player_ids);
-                            for (const playerId of attending_home_player_ids) {
-                                // Verify player belongs to user's home team
-                                const verifyResult = await query(
-                                    `SELECT htp.id FROM home_team_players htp
-                                     JOIN home_teams ht ON htp.home_team_id = ht.id
-                                     WHERE htp.id = $1 AND ht.user_id = $2`,
-                                    [playerId, userId]
+                        const { attending_player_ids } = req.body || {};
+                        const gid = parseInt(gameId, 10);
+                        const gameRow = await fetchGameRow(userId, gid);
+                        if (!gameRow) return res.status(404).json({ error: 'Game not found' });
+                        await query('DELETE FROM game_attending_players WHERE game_id = $1', [gid]);
+                        const a = gameRow.team_a_id;
+                        const b = gameRow.team_b_id;
+                        const ids = Array.isArray(attending_player_ids) ? attending_player_ids : [];
+                        for (const pid of ids) {
+                            const ok = await query(
+                                `SELECT tp.id FROM team_players tp
+                                 WHERE tp.id = $1 AND (tp.team_id = $2 OR tp.team_id = $3)`,
+                                [pid, a, b]
+                            );
+                            if (ok.rows.length > 0) {
+                                await query(
+                                    'INSERT INTO game_attending_players (game_id, team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                                    [gid, pid]
                                 );
-
-                                if (verifyResult.rows.length > 0) {
-                                    await query(
-                                        'INSERT INTO game_home_players (game_id, home_team_player_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-                                        [parseInt(gameId), playerId]
-                                    );
-                                    console.log('Added attending player:', playerId);
-                                } else {
-                                    console.warn('Player not found or does not belong to user:', { playerId, userId });
-                                }
                             }
-                        } else {
-                            console.log('No attending players to add');
                         }
+                        const game = await fetchGameRow(userId, gid);
+                        await attachAttendingAndGoals(game, gid);
+                        return res.json(game);
+                    }
 
-                        // Return updated game with attending players
-                        const updatedGameResult = await query(
-                            `SELECT g.*, at.team_name as away_team_name, at.team_color as away_team_color, at.id as away_team_id
-                             FROM games g
-                             JOIN away_teams at ON g.away_team_id = at.id
-                             WHERE g.id = $1 AND g.user_id = $2`,
-                            [parseInt(gameId), userId]
-                        );
-
-                        const updatedGame = updatedGameResult.rows[0];
-
-                        // Get attending home players
-                        const playersResult = await query(
-                            `SELECT htp.* FROM game_home_players ghp
-                             JOIN home_team_players htp ON ghp.home_team_player_id = htp.id
-                             WHERE ghp.game_id = $1
-                             ORDER BY htp.player_number`,
-                            [parseInt(gameId)]
-                        );
-                        updatedGame.attending_home_players = playersResult.rows;
-                        
-                        console.log('Returning updated game with attending players:', { 
-                            gameId, 
-                            attendingCount: updatedGame.attending_home_players.length 
-                        });
-
-                        return res.json(updatedGame);
-                    } else if (parts.length === 4 && parts[2] === 'goals') {
-                        // Route: /api/v2/games/:id/goals/:goalId (DELETE or PUT)
+                    if (parts.length === 4 && parts[2] === 'goals') {
                         const goalId = parts[3];
-                        
                         if (method === 'DELETE') {
-                            // Delete goal
-                            const userId = req.user.userId;
-
-                            // Verify goal belongs to user's game
                             const verifyResult = await query(
                                 `SELECT g.id FROM goals g
                                  JOIN games gm ON g.game_id = gm.id
                                  WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
-                                [parseInt(goalId), parseInt(gameId), userId]
+                                [parseInt(goalId, 10), parseInt(gameId, 10), userId]
                             );
-
-                            if (verifyResult.rows.length === 0) {
-                                return res.status(404).json({ error: 'Goal not found' });
-                            }
-
-                            await query('DELETE FROM goals WHERE id = $1', [parseInt(goalId)]);
+                            if (verifyResult.rows.length === 0) return res.status(404).json({ error: 'Goal not found' });
+                            await query('DELETE FROM goals WHERE id = $1', [parseInt(goalId, 10)]);
                             return res.json({ message: 'Goal deleted' });
-                        } else if (method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT')) {
-                            // Update goal announcement text
-                            const userId = req.user.userId;
+                        }
+                        if (method === 'PUT' || (method === 'POST' && req.body && req.body._method === 'PUT')) {
+                            if (req.body && req.body._method) delete req.body._method;
                             const { announcement_text } = req.body || {};
-
-                            if (!announcement_text) {
-                                return res.status(400).json({ error: 'Announcement text is required' });
-                            }
-
-                            // Verify goal belongs to user's game
+                            if (!announcement_text) return res.status(400).json({ error: 'Announcement text is required' });
                             const verifyResult = await query(
                                 `SELECT g.id FROM goals g
                                  JOIN games gm ON g.game_id = gm.id
                                  WHERE g.id = $1 AND gm.id = $2 AND gm.user_id = $3`,
-                                [parseInt(goalId), parseInt(gameId), userId]
+                                [parseInt(goalId, 10), parseInt(gameId, 10), userId]
                             );
-
-                            if (verifyResult.rows.length === 0) {
-                                return res.status(404).json({ error: 'Goal not found' });
-                            }
-
-                            // Update announcement text
-                            const result = await query(
-                                'UPDATE goals SET announcement_text = $1 WHERE id = $2 RETURNING *',
-                                [announcement_text, parseInt(goalId)]
-                            );
-
+                            if (verifyResult.rows.length === 0) return res.status(404).json({ error: 'Goal not found' });
+                            const result = await query('UPDATE goals SET announcement_text = $1 WHERE id = $2 RETURNING *', [
+                                announcement_text,
+                                parseInt(goalId, 10)
+                            ]);
                             return res.json(result.rows[0]);
                         }
-                    } else if (parts.length === 3 && parts[2] === 'goals') {
-                        // Route: /api/v2/games/:id/goals (POST)
-                        const isPost = method === 'POST';
-                        const isPutWorkaround = method === 'POST' && req.body && req.body._action === 'PUT';
-                        
-                        if (isPost || isPutWorkaround) {
-                            // Record goal
-                            const userId = req.user.userId;
-                            // Support both 'team' and 'scoring_team' for compatibility
-                            const scoringTeam = req.body.scoring_team || req.body.team;
-                            // Support both scorer_id/scorer_player_id and assist1_id/assist1_player_id for compatibility
-                            const scorerPlayerId = req.body.scorer_player_id || req.body.scorer_id;
-                            const assist1PlayerId = req.body.assist1_player_id || req.body.assist1_id;
-                            const assist2PlayerId = req.body.assist2_player_id || req.body.assist2_id;
-                            const { scorer_is_home, assist1_is_home, assist2_is_home, period, time_remaining, announcement_text } = req.body || {};
-                            
-                            console.log('Recording goal:', { gameId, scoringTeam, scorerPlayerId, scorer_is_home, period, time_remaining });
+                    }
 
-                            // Verify game belongs to user
-                            const gameResult = await query(
-                                'SELECT id FROM games WHERE id = $1 AND user_id = $2',
-                                [parseInt(gameId), userId]
-                            );
+                    if (parts.length === 3 && parts[2] === 'goals' && method === 'POST') {
+                        const scoringTeam = req.body.scoring_team || req.body.team;
+                        const scorerPlayerId = req.body.scorer_player_id || req.body.scorer_id;
+                        const assist1PlayerId = req.body.assist1_player_id || req.body.assist1_id;
+                        const assist2PlayerId = req.body.assist2_player_id || req.body.assist2_id;
+                        const {
+                            scorer_is_team_a,
+                            assist1_is_team_a,
+                            assist2_is_team_a,
+                            period,
+                            time_remaining,
+                            announcement_text
+                        } = req.body || {};
 
-                            if (gameResult.rows.length === 0) {
-                                return res.status(404).json({ error: 'Game not found' });
-                            }
+                        const gameResult = await query('SELECT id FROM games WHERE id = $1 AND user_id = $2', [
+                            parseInt(gameId, 10),
+                            userId
+                        ]);
+                        if (gameResult.rows.length === 0) return res.status(404).json({ error: 'Game not found' });
 
-                            // Insert goal - match database schema
-                            const result = await query(
-                                `INSERT INTO goals (game_id, scoring_team, scorer_player_id, scorer_is_home, assist1_player_id, assist1_is_home, assist2_player_id, assist2_is_home, period, time_remaining, announcement_text)
-                                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-                                [
-                                    parseInt(gameId), 
-                                    scoringTeam, 
-                                    scorerPlayerId || null, 
-                                    scorer_is_home !== undefined ? scorer_is_home : true,
-                                    assist1PlayerId || null, 
-                                    assist1_is_home || null,
-                                    assist2PlayerId || null, 
-                                    assist2_is_home || null,
-                                    period || null, 
-                                    time_remaining || null,
-                                    announcement_text || null
-                                ]
-                            );
-
-                            return res.status(201).json(result.rows[0]);
-                        }
+                        const result = await query(
+                            `INSERT INTO goals (game_id, scoring_team, scorer_player_id, scorer_is_team_a,
+                             assist1_player_id, assist1_is_team_a, assist2_player_id, assist2_is_team_a,
+                             period, time_remaining, announcement_text)
+                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+                            [
+                                parseInt(gameId, 10),
+                                scoringTeam,
+                                scorerPlayerId || null,
+                                scorer_is_team_a !== undefined ? scorer_is_team_a : true,
+                                assist1PlayerId || null,
+                                assist1_is_team_a != null ? assist1_is_team_a : null,
+                                assist2PlayerId || null,
+                                assist2_is_team_a != null ? assist2_is_team_a : null,
+                                period || null,
+                                time_remaining || null,
+                                announcement_text || null
+                            ]
+                        );
+                        return res.status(201).json(result.rows[0]);
                     }
                 }
             }
 
-            // Test route to verify catch-all is working
             if (route === 'test' || route === '') {
-                return res.json({ 
-                    message: 'V2 catch-all is working', 
-                    route, 
-                    method, 
-                    url: req.url,
-                    parsedRoute: route
-                });
+                return res.json({ message: 'V2 catch-all is working', route, method, url: req.url });
             }
 
-            // If no route matched, return helpful error
-            console.error('Route not matched:', { route, method, url: req.url, parts: route.split('/') });
-            return res.status(404).json({ 
-                error: 'Route not found', 
-                route, 
+            return res.status(404).json({
+                error: 'Route not found',
+                route,
                 method,
-                url: req.url,
-                availableRoutes: ['home-team', 'home-team/players', 'away-teams', 'away-teams/:id', 'away-teams/:id/players', 'games', 'games/:id']
+                url: req.url
             });
         } catch (error) {
             console.error('V2 API error:', error);
-            if (error.code === '23505') { // Unique constraint violation
-                return res.status(400).json({ error: 'Duplicate entry' });
-            }
+            if (error.code === '23505') return res.status(400).json({ error: 'Duplicate entry' });
             return res.status(500).json({ error: 'Internal server error', details: error.message });
         }
     });
 };
-
