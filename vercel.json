@@ -15,6 +15,12 @@
     "api/v2/teams/players/[id].js": {
       "maxDuration": 30
     },
+    "api/v2/teams/[teamId]/players.js": {
+      "maxDuration": 30
+    },
+    "api/v2/teams/[teamId]/players/[playerId].js": {
+      "maxDuration": 30
+    },
     "api/v2/[...].js": {
       "maxDuration": 30
     },

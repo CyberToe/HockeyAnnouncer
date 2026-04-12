@@ -28,6 +28,25 @@ async function apiCall(endpoint, options = {}) {
     return response;
 }
 
+/** When the server returns HTML (e.g. Vercel 404), JSON.parse would throw — use this on error paths. */
+async function readErrorMessage(response) {
+    const ct = response.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+        try {
+            const j = await response.json();
+            return j.error || j.message || `HTTP ${response.status}`;
+        } catch {
+            return `HTTP ${response.status}`;
+        }
+    }
+    try {
+        const text = await response.text();
+        return text.trim().slice(0, 200) || `HTTP ${response.status}`;
+    } catch {
+        return `HTTP ${response.status}`;
+    }
+}
+
 function logout() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
@@ -83,8 +102,7 @@ async function createTeam() {
         document.getElementById('teamSelector').value = newTeam.id;
         selectTeam();
     } else {
-        const err = await response.json();
-        showMessage('teamsMessage', err.error || 'Error creating team', 'error');
+        showMessage('teamsMessage', await readErrorMessage(response), 'error');
     }
 }
 
@@ -99,8 +117,7 @@ async function deleteTeam(teamId) {
         await loadTeams();
         await loadGames();
     } else {
-        const err = await response.json();
-        showMessage('teamsMessage', err.error || 'Error deleting team', 'error');
+        showMessage('teamsMessage', await readErrorMessage(response), 'error');
     }
 }
 
@@ -126,8 +143,7 @@ async function addTeamPlayer(teamId) {
         document.getElementById('teamSelector').value = teamId;
         selectTeam();
     } else {
-        const err = await response.json();
-        showMessage('teamsMessage', err.error || 'Error adding player', 'error');
+        showMessage('teamsMessage', await readErrorMessage(response), 'error');
     }
 }
 
@@ -143,8 +159,7 @@ async function deleteTeamPlayer(teamId, playerId) {
             selectTeam();
         }
     } else {
-        const err = await response.json();
-        showMessage('teamsMessage', err.error || 'Error deleting player', 'error');
+        showMessage('teamsMessage', await readErrorMessage(response), 'error');
     }
 }
 
@@ -239,8 +254,7 @@ async function updateTeam() {
         document.getElementById('teamSelector').value = selectedTeamId;
         selectTeam();
     } else {
-        const err = await response.json();
-        showMessage('teamsMessage', err.error || 'Error updating team', 'error');
+        showMessage('teamsMessage', await readErrorMessage(response), 'error');
     }
 }
 
@@ -323,8 +337,7 @@ async function createGame() {
         showMessage('gamesMessage', 'Game created', 'success');
         await loadGames();
     } else {
-        const err = await response.json();
-        showMessage('gamesMessage', err.error || 'Error creating game', 'error');
+        showMessage('gamesMessage', await readErrorMessage(response), 'error');
     }
 }
 
