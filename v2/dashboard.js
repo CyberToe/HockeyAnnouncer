@@ -317,7 +317,7 @@ async function createGame() {
         return;
     }
     if (teamA === teamB) {
-        showMessage('gamesMessage', 'Team A and Team B must be different', 'error');
+        showMessage('gamesMessage', 'Choose two different teams', 'error');
         return;
     }
     const response = await apiCall('/games', {

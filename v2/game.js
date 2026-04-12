@@ -124,14 +124,13 @@ function renderAttendingPlayers() {
     function block(slot, team) {
         const rawColor = (team.team_color && String(team.team_color).trim()) || '';
         const accent = rawColor.startsWith('#') ? rawColor : '#3498db';
-        const labelSlot = slot === 'team_a' ? 'Team A' : 'Team B';
+        const teamTitle = escapeHtml(team.team_name);
 
         if (!team.players || team.players.length === 0) {
             return `
             <div class="attending-team-group" style="--team-accent: ${accent}">
                 <div class="attending-team-group__header">
-                    <span class="attending-team-group__badge">${labelSlot}</span>
-                    <h3>${escapeHtml(team.team_name)}</h3>
+                    <span class="attending-team-group__badge">${teamTitle}</span>
                 </div>
                 <div class="attending-team-group__list">
                     <p style="color: #7f8c8d; margin: 0;">No players on this roster yet.</p>
@@ -156,8 +155,7 @@ function renderAttendingPlayers() {
         return `
             <div class="attending-team-group" style="--team-accent: ${accent}">
                 <div class="attending-team-group__header">
-                    <span class="attending-team-group__badge">${labelSlot}</span>
-                    <h3>${escapeHtml(team.team_name)}</h3>
+                    <span class="attending-team-group__badge">${teamTitle}</span>
                 </div>
                 <div class="attending-team-group__list">
                     ${rows}
