@@ -38,7 +38,7 @@ section {
     border-radius: 8px;
     padding: 25px;
     margin-bottom: 25px;
-    border: 1px solid #e5e7eb;
+    border: 2px solid #94a3b8;
     box-shadow: none;
 }
 
@@ -47,7 +47,7 @@ section h2 {
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 20px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 2px solid #94a3b8;
     padding-bottom: 12px;
 }
 
@@ -72,7 +72,7 @@ section h4 {
 }
 
 .team-card {
-    border: 2px solid #e0e0e0;
+    border: 2px solid #94a3b8;
     border-radius: 10px;
     padding: 20px;
     background: #f8f9fa;
@@ -87,7 +87,7 @@ section h4 {
 .team-card input[type="text"] {
     width: 100%;
     padding: 10px;
-    border: 2px solid #ddd;
+    border: 2px solid #94a3b8;
     border-radius: 8px;
     font-size: 1rem;
     margin-bottom: 10px;
@@ -123,7 +123,7 @@ section h4 {
     flex: 1;
     min-width: 120px;
     padding: 8px;
-    border: 2px solid #ddd;
+    border: 2px solid #94a3b8;
     border-radius: 6px;
     font-size: 0.9rem;
 }
@@ -131,7 +131,7 @@ section h4 {
 .players-list {
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #ddd;
+    border: 2px solid #94a3b8;
     border-radius: 8px;
     padding: 10px;
     background: white;
@@ -142,7 +142,7 @@ section h4 {
     justify-content: space-between;
     align-items: center;
     padding: 8px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 2px solid #cbd5e1;
     font-size: 0.9rem;
 }
 
@@ -194,12 +194,12 @@ section h4 {
 .btn-secondary {
     background: #f8fafc;
     color: #334155;
-    border: 1px solid #e2e8f0;
+    border: 2px solid #94a3b8;
 }
 
 .btn-secondary:hover {
     background: #f1f5f9;
-    border-color: #cbd5e1;
+    border-color: #64748b;
 }
 
 .btn-danger {
@@ -247,7 +247,7 @@ section h4 {
 .form-row input {
     flex: 1;
     padding: 12px;
-    border: 2px solid #ddd;
+    border: 2px solid #94a3b8;
     border-radius: 8px;
     font-size: 1rem;
     min-width: 150px;
@@ -282,7 +282,7 @@ section h4 {
 
 .goal-item {
     background: #f8f9fa;
-    border: 1px solid #e9ecef;
+    border: 2px solid #94a3b8;
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 15px;
@@ -362,7 +362,7 @@ section h4 {
     color: #1e40af;
     padding: 10px 14px;
     border-radius: 6px;
-    border: 1px solid #bfdbfe;
+    border: 2px solid #3b82f6;
     font-style: italic;
     margin-bottom: 10px;
 }

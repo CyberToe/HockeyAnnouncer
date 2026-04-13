@@ -147,7 +147,7 @@ function renderAttendingPlayers() {
                     <input type="checkbox" id="att_${slot}_${player.id}" data-slot="${slot}" value="${player.id}" ${checked ? 'checked' : ''}>
                     <label for="att_${slot}_${player.id}">${escapeHtml(player.player_name)}</label>
                     <span style="color:#95a5a6;font-size:0.9rem;">#</span>
-                    <input type="number" id="num_${slot}_${player.id}" value="${player.player_number}" min="1" max="99" title="Jersey for this game" style="width: 56px; padding: 6px 8px; border: 1px solid #ced4da; border-radius: 6px;">
+                    <input type="number" id="num_${slot}_${player.id}" value="${player.player_number}" min="1" max="99" title="Jersey for this game" style="width: 56px; padding: 6px 8px; border: 2px solid #94a3b8; border-radius: 6px;">
                 </div>`;
             })
             .join('');
@@ -507,7 +507,7 @@ function renderGoals() {
                             <span class="goal-team" style="background-color: ${teamColor}">${teamName}</span>
                             <span class="goal-time">${goal.period === 'ot' ? 'OT' : `P${goal.period}`} ${goal.time_remaining}</span>
                         </div>
-                        <textarea id="edit_announcement_${goalId}" rows="3" style="width: 100%; padding: 10px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box; font-family: inherit;">${goal.announcement_text.replace(/"/g, '&quot;')}</textarea>
+                        <textarea id="edit_announcement_${goalId}" rows="3" style="width: 100%; padding: 10px 12px; border: 2px solid #2563eb; border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box; font-family: inherit;">${goal.announcement_text.replace(/"/g, '&quot;')}</textarea>
                     </div>
                     <div class="goal-actions">
                         <button class="btn btn-primary btn-sm" onclick="saveGoalAnnouncement(${goalId})">Save</button>
