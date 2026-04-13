@@ -22,39 +22,6 @@
             border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
         }
         .logout-btn:hover { background: #f8fafc; color: #0f172a; border-color: #64748b; }
-        .dashboard-header-actions {
-            display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end;
-        }
-        .demo-modal {
-            display: none; position: fixed; inset: 0; z-index: 1000;
-            align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
-        }
-        .demo-modal.is-open { display: flex; }
-        .demo-modal-backdrop {
-            position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); cursor: pointer; border: none; padding: 0;
-        }
-        .demo-modal-panel {
-            position: relative; z-index: 1; width: min(920px, 100%); max-height: calc(100vh - 40px);
-            background: #fff; border-radius: 10px; border: 2px solid #94a3b8;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); overflow: hidden;
-            display: flex; flex-direction: column;
-        }
-        .demo-modal-header {
-            display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            padding: 14px 16px; border-bottom: 2px solid #e2e8f0; flex-shrink: 0;
-        }
-        .demo-modal-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #0f172a; }
-        .demo-modal-close {
-            padding: 6px 12px; background: #f1f5f9; color: #334155; border: 2px solid #94a3b8;
-            border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
-        }
-        .demo-modal-close:hover { background: #e2e8f0; color: #0f172a; }
-        .demo-video-wrap {
-            position: relative; width: 100%; aspect-ratio: 16 / 9; background: #0f172a;
-        }
-        .demo-video-wrap iframe {
-            position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
-        }
         .tabs {
             display: flex; gap: 0; margin-bottom: 0;
             border-bottom: 2px solid #94a3b8;
@@ -117,8 +84,7 @@
     <div class="dashboard-container">
         <div class="dashboard-header">
             <h1>Hockey Goal Announcer</h1>
-            <div class="dashboard-header-actions">
-                <button type="button" class="btn btn-secondary" onclick="openDemoModal()">See demo</button>
+            <div>
                 <span class="user-info" id="userEmail"></span>
                 <button type="button" class="logout-btn" onclick="logout()">Logout</button>
             </div>
@@ -216,30 +182,6 @@
 
                 <h3 style="margin-top: 30px;">Games list</h3>
                 <div id="gamesList"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="demoModal" class="demo-modal" aria-hidden="true">
-        <button type="button" class="demo-modal-backdrop" onclick="closeDemoModal()" aria-label="Close demo"></button>
-        <div
-            class="demo-modal-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="demoModalTitle"
-            onclick="event.stopPropagation()"
-        >
-            <div class="demo-modal-header">
-                <h2 id="demoModalTitle">Demo</h2>
-                <button type="button" class="demo-modal-close" onclick="closeDemoModal()">Close</button>
-            </div>
-            <div class="demo-video-wrap">
-                <iframe
-                    id="demoVideoIframe"
-                    title="Hockey Goal Announcer demo video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowfullscreen
-                ></iframe>
             </div>
         </div>
     </div>
