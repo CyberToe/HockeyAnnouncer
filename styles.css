@@ -7,9 +7,9 @@
 
 body {
     font-family: 'Roboto', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #ffffff;
     min-height: 100vh;
-    color: #333;
+    color: #0f172a;
     line-height: 1.6;
 }
 
@@ -26,27 +26,29 @@ header {
 }
 
 header h1 {
-    color: white;
+    color: #0f172a;
     font-size: 2.5rem;
     font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    letter-spacing: -0.02em;
 }
 
 /* Section styles */
 section {
-    background: white;
-    border-radius: 15px;
+    background: #ffffff;
+    border-radius: 8px;
     padding: 25px;
     margin-bottom: 25px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    box-shadow: none;
 }
 
 section h2 {
-    color: #2c3e50;
-    font-size: 1.8rem;
+    color: #0f172a;
+    font-size: 1.5rem;
+    font-weight: 600;
     margin-bottom: 20px;
-    border-bottom: 3px solid #3498db;
-    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 12px;
 }
 
 section h3 {
@@ -94,7 +96,7 @@ section h4 {
 
 .team-card input[type="text"]:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #2563eb;
 }
 
 .team-card input[type="color"] {
@@ -169,46 +171,49 @@ section h4 {
 
 /* Buttons */
 .btn {
-    padding: 12px 24px;
+    padding: 10px 20px;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.9375rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
+    background: #2563eb;
+    color: #ffffff;
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #2980b9, #1f639a);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+    background: #1d4ed8;
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, #95a5a6, #7f8c8d);
-    color: white;
+    background: #f8fafc;
+    color: #334155;
+    border: 1px solid #e2e8f0;
 }
 
 .btn-secondary:hover {
-    background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
-    transform: translateY(-2px);
+    background: #f1f5f9;
+    border-color: #cbd5e1;
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
-    color: white;
+    background: #dc2626;
+    color: #ffffff;
 }
 
 .btn-danger:hover {
-    background: linear-gradient(135deg, #c0392b, #a93226);
-    transform: translateY(-2px);
+    background: #b91c1c;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8125rem;
 }
 
 .team-actions {
@@ -251,7 +256,7 @@ section h4 {
 .form-row select:focus,
 .form-row input:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #2563eb;
 }
 
 #recordGoalBtn {
@@ -298,9 +303,7 @@ section h4 {
 }
 
 .goal-item:hover {
-    background: #e9ecef;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    background: #f1f5f9;
 }
 
 .goal-header {
@@ -355,10 +358,11 @@ section h4 {
 }
 
 .goal-announcement {
-    background: #3498db;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 8px;
+    background: #eff6ff;
+    color: #1e40af;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #bfdbfe;
     font-style: italic;
     margin-bottom: 10px;
 }
@@ -409,7 +413,7 @@ section h4 {
     min-width: 40px;
     text-align: center;
     font-weight: 500;
-    color: #3498db;
+    color: #2563eb;
 }
 
 /* Responsive Design */
@@ -500,7 +504,7 @@ section h4 {
     width: 20px;
     height: 20px;
     margin: -10px 0 0 -10px;
-    border: 2px solid #3498db;
+    border: 2px solid #2563eb;
     border-top: 2px solid transparent;
     border-radius: 50%;
     animation: spin 1s linear infinite;

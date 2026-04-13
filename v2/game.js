@@ -507,7 +507,7 @@ function renderGoals() {
                             <span class="goal-team" style="background-color: ${teamColor}">${teamName}</span>
                             <span class="goal-time">${goal.period === 'ot' ? 'OT' : `P${goal.period}`} ${goal.time_remaining}</span>
                         </div>
-                        <textarea id="edit_announcement_${goalId}" rows="3" style="width: 100%; padding: 10px; border: 2px solid #3498db; border-radius: 8px; font-size: 1rem; box-sizing: border-box; font-family: inherit;">${goal.announcement_text.replace(/"/g, '&quot;')}</textarea>
+                        <textarea id="edit_announcement_${goalId}" rows="3" style="width: 100%; padding: 10px 12px; border: 1px solid #2563eb; border-radius: 6px; font-size: 0.9375rem; box-sizing: border-box; font-family: inherit;">${goal.announcement_text.replace(/"/g, '&quot;')}</textarea>
                     </div>
                     <div class="goal-actions">
                         <button class="btn btn-primary btn-sm" onclick="saveGoalAnnouncement(${goalId})">Save</button>

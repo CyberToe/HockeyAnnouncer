@@ -3,43 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Hockey Goal Announcer V2</title>
+    <title>Login — Hockey Goal Announcer</title>
+    <link rel="icon" href="../favicon.png" type="image/png">
     <link rel="stylesheet" href="../styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         .login-container {
             max-width: 400px;
-            margin: 100px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 72px auto;
+            padding: 36px 32px;
+            background: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            box-shadow: none;
         }
         .login-container h1 {
             text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
+            color: #0f172a;
+            margin-bottom: 28px;
+            font-size: 1.35rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
         }
         .form-group {
             margin-bottom: 20px;
         }
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            color: #2c3e50;
+            margin-bottom: 6px;
+            color: #334155;
             font-weight: 500;
+            font-size: 0.875rem;
         }
         .form-group input {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.9375rem;
             box-sizing: border-box;
         }
         .form-group input:focus {
             outline: none;
-            border-color: #3498db;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
         .form-actions {
             display: flex;
@@ -69,7 +76,7 @@
             color: #7f8c8d;
         }
         .toggle-form a {
-            color: #3498db;
+            color: #2563eb;
             text-decoration: none;
             cursor: pointer;
         }
@@ -80,14 +87,14 @@
 </head>
 <body>
     <div class="login-container">
-        <h1>🏒 Hockey Goal Announcer V2</h1>
+        <h1>Hockey Goal Announcer</h1>
         
         <div id="errorMessage" class="error-message"></div>
         <div id="successMessage" class="success-message"></div>
 
         <!-- Login Form -->
         <div id="loginForm">
-            <h2 style="text-align: center; margin-bottom: 20px; color: #34495e;">Login</h2>
+            <h2 style="text-align: center; margin-bottom: 20px; color: #334155; font-size: 1rem; font-weight: 600;">Login</h2>
             <form id="loginFormElement" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label for="loginEmail">Email:</label>
@@ -108,7 +115,7 @@
 
         <!-- Register Form -->
         <div id="registerForm" style="display: none;">
-            <h2 style="text-align: center; margin-bottom: 20px; color: #34495e;">Register</h2>
+            <h2 style="text-align: center; margin-bottom: 20px; color: #334155; font-size: 1rem; font-weight: 600;">Register</h2>
             <form id="registerFormElement" onsubmit="handleRegister(event)">
                 <div class="form-group">
                     <label for="registerEmail">Email:</label>
