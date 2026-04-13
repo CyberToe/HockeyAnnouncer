@@ -385,6 +385,34 @@ function showMessage(elementId, message, type) {
     }, 5000);
 }
 
+const DEMO_VIDEO_EMBED = 'https://www.youtube.com/embed/0hOHVlVUnfA';
+
+function openDemoModal() {
+    const modal = document.getElementById('demoModal');
+    const iframe = document.getElementById('demoVideoIframe');
+    if (!modal || !iframe) return;
+    iframe.src = DEMO_VIDEO_EMBED;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDemoModal() {
+    const modal = document.getElementById('demoModal');
+    const iframe = document.getElementById('demoVideoIframe');
+    if (!modal || !iframe) return;
+    iframe.src = '';
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const modal = document.getElementById('demoModal');
+    if (modal && modal.classList.contains('is-open')) closeDemoModal();
+});
+
 window.addEventListener('DOMContentLoaded', async () => {
     await loadTeams();
     await loadGames();
