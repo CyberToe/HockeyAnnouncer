@@ -8,8 +8,15 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
+        .home-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
         .home-landing {
-            max-width: 560px;
+            max-width: 960px;
             margin: 0 auto;
         }
         .home-landing h2 {
@@ -29,8 +36,7 @@
         .home-actions {
             margin-top: 28px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
             gap: 14px;
         }
         .home-actions .btn {
@@ -47,30 +53,14 @@
         .home-demo-btn:hover {
             background: #15803d;
         }
-        .demo-modal {
-            display: none; position: fixed; inset: 0; z-index: 1000;
-            align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+        .home-top-right {
+            display: inline-flex;
+            align-items: center;
         }
-        .demo-modal.is-open { display: flex; }
-        .demo-modal-backdrop {
-            position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); cursor: pointer; border: none; padding: 0;
+        .home-top-right .btn {
+            text-decoration: none;
+            white-space: nowrap;
         }
-        .demo-modal-panel {
-            position: relative; z-index: 1; width: min(920px, 100%); max-height: calc(100vh - 40px);
-            background: #fff; border-radius: 10px; border: 2px solid #94a3b8;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); overflow: hidden;
-            display: flex; flex-direction: column;
-        }
-        .demo-modal-header {
-            display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            padding: 14px 16px; border-bottom: 2px solid #e2e8f0; flex-shrink: 0;
-        }
-        .demo-modal-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #0f172a; }
-        .demo-modal-close {
-            padding: 6px 12px; background: #f1f5f9; color: #334155; border: 2px solid #94a3b8;
-            border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
-        }
-        .demo-modal-close:hover { background: #e2e8f0; color: #0f172a; }
         .home-instruction {
             margin-top: 20px;
             background: #f8fafc;
@@ -88,9 +78,15 @@
             margin: 0;
             line-height: 1.45;
         }
+        .demo-inline {
+            margin-top: 24px;
+            border: 2px solid #94a3b8;
+            border-radius: 10px;
+            background: #fff;
+            padding: 16px;
+        }
         .demo-body {
             padding: 16px;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 14px;
@@ -216,8 +212,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
         @media (max-width: 640px) {
-            .demo-modal { padding: 10px; }
-            .demo-modal-panel { max-height: calc(100vh - 20px); }
+            .home-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .home-top-right {
+                justify-content: flex-end;
+            }
             .demo-actions { flex-direction: column; align-items: stretch; }
             .demo-actions .btn { width: 100%; }
         }
@@ -232,7 +233,12 @@
 <body>
     <div class="container">
         <header>
-            <h1>🏒 Hockey Goal Announcer</h1>
+            <div class="home-header">
+                <h1>🏒 Hockey Goal Announcer</h1>
+                <div class="home-top-right">
+                    <a href="v2/login.html" class="btn btn-primary">Login/Register</a>
+                </div>
+            </div>
             <p class="home-tagline">Goal calls, rosters, and game-day announcements in one place.</p>
         </header>
 
@@ -251,37 +257,24 @@
                 </p>
             </div>
             <div class="home-actions">
-                <a href="v2/login.html" class="btn btn-primary">Log in</a>
-                <button type="button" class="btn home-demo-btn" onclick="openDemoModal()">Start guided demo</button>
+                <button type="button" class="btn home-demo-btn" onclick="restartDemo()">Restart step-by-step demo</button>
             </div>
-        </section>
-    </div>
 
-    <div id="demoModal" class="demo-modal" aria-hidden="true">
-        <button type="button" class="demo-modal-backdrop" onclick="closeDemoModal()" aria-label="Close demo"></button>
-        <div
-            class="demo-modal-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="demoModalTitle"
-            onclick="event.stopPropagation()"
-        >
-            <div class="demo-modal-header">
-                <h2 id="demoModalTitle">Guided Demo Mode</h2>
-                <button type="button" class="demo-modal-close" onclick="closeDemoModal()">Close</button>
-            </div>
-            <div class="demo-body">
-                <div class="demo-progress" id="demoProgress" aria-label="Demo progress"></div>
-                <div id="demoContent" class="demo-fade"></div>
-                <div class="demo-actions">
-                    <span id="demoStepIndicator" class="demo-step-indicator">Step 1 of 8</span>
-                    <div style="display:flex; gap:10px; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-demo-secondary" onclick="closeDemoModal()">Skip Demo</button>
-                        <button id="demoPrimaryButton" type="button" class="btn btn-primary" onclick="handleDemoPrimaryClick()">Next</button>
+            <section class="demo-inline" aria-label="Guided demo mode">
+                <h2 style="margin: 0 0 8px 0; border-bottom: none;">Guided Demo Mode</h2>
+                <div class="demo-body">
+                    <div class="demo-progress" id="demoProgress" aria-label="Demo progress"></div>
+                    <div id="demoContent" class="demo-fade"></div>
+                    <div class="demo-actions">
+                        <span id="demoStepIndicator" class="demo-step-indicator">Step 1 of 7</span>
+                        <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-demo-secondary" onclick="restartDemo()">Restart</button>
+                            <button id="demoPrimaryButton" type="button" class="btn btn-primary" onclick="handleDemoPrimaryClick()">Next</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
+        </section>
     </div>
 
     <script>
@@ -325,47 +318,30 @@
             {
                 phase: 'Game On',
                 title: 'Step 7: Play Goal',
-                help: 'Use Play to replay the announcement with visual text animation.',
+                help: 'Use Play to read the registered goal text and play it with ElevenLabs Radio DJ voice.',
                 buttonLabel: 'Play Goal'
-            },
-            {
-                phase: 'Game On',
-                title: 'Step 8: Completion',
-                help: 'You have completed the full end-to-end demo.',
-                buttonLabel: 'Create Your First Team'
             }
         ];
 
         const DEMO_PLAYERS_PITBULLS = ['#2 Clark', '#7 Thomas', '#14 Judy'];
         const DEMO_PLAYERS_POTATOES = ['#2 Susan', '#9 Bill', '#67 Fred'];
         const REQUIRED_GOAL_TEXT = 'Goal for the Pitbulls! by number 7, Thomas, assisted by number 2, Clark and number 14, Judy, in the first period with 4:25 remaining.';
+        const DEMO_DJ_VOICE_ID = 'KLoixBflzS2a9rg6nT8x';
 
         let demoStepIndex = 0;
         let demoTimers = [];
-        let replayWordIndex = 0;
-        let replayWords = [];
+        let isPlayingDemoAudio = false;
 
-        function openDemoModal() {
-            const modal = document.getElementById('demoModal');
-            if (!modal) return;
+        function restartDemo() {
             demoStepIndex = 0;
-            modal.classList.add('is-open');
-            modal.setAttribute('aria-hidden', 'false');
-            document.body.style.overflow = 'hidden';
             renderDemo();
         }
 
-        function closeDemoModal() {
-            const modal = document.getElementById('demoModal');
-            if (!modal) return;
-            clearDemoTimers();
-            modal.classList.remove('is-open');
-            modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-        }
-
         function clearDemoTimers() {
-            demoTimers.forEach((timer) => clearTimeout(timer));
+            demoTimers.forEach((timer) => {
+                clearTimeout(timer);
+                clearInterval(timer);
+            });
             demoTimers = [];
         }
 
@@ -398,7 +374,6 @@
             if (demoStepIndex === 4) renderRecordGoal(content);
             if (demoStepIndex === 5) renderGoalLog(content);
             if (demoStepIndex === 6) renderPlayGoal(content);
-            if (demoStepIndex === 7) renderCompletion(content);
         }
 
         function renderProgressPills(progressNode) {
@@ -520,24 +495,10 @@
                     <h3 class="demo-step-title">${DEMO_STEPS[6].title}</h3>
                     <p class="demo-step-help">${DEMO_STEPS[6].help}</p>
                     <div class="demo-replay">
-                        <div id="replayText" class="demo-replay-text"></div>
+                        <div id="replayText" class="demo-replay-text">${REQUIRED_GOAL_TEXT}</div>
                     </div>
-                </div>
-            `;
-            replayWordIndex = 0;
-            replayWords = REQUIRED_GOAL_TEXT.split(' ');
-        }
-
-        function renderCompletion(node) {
-            const primaryButton = document.getElementById('demoPrimaryButton');
-            if (primaryButton) primaryButton.classList.remove('btn-demo-highlight');
-            node.innerHTML = `
-                <div class="demo-step-card">
-                    <h3 class="demo-step-title">${DEMO_STEPS[7].title}</h3>
-                    <p class="demo-step-help">You're ready for game day.</p>
-                    <div class="demo-actions">
-                        <a href="v2/login.html" class="btn btn-primary">Create Your First Team</a>
-                        <button type="button" class="btn btn-demo-secondary" onclick="closeDemoModal()">Exit Demo</button>
+                    <div style="margin-top: 10px;">
+                        <button id="playAudioButton" type="button" class="btn btn-primary" onclick="playDemoAnnouncementAudio()">Play DJ Announcer Audio</button>
                     </div>
                 </div>
             `;
@@ -560,41 +521,54 @@
             demoTimers.push(interval);
         }
 
-        function playReplayAnimation() {
-            const replayNode = document.getElementById('replayText');
-            if (!replayNode) return;
-            replayNode.textContent = '';
-            replayWordIndex = 0;
-            const wordTimer = setInterval(() => {
-                if (replayWordIndex >= replayWords.length) {
-                    clearInterval(wordTimer);
-                    return;
+        async function playDemoAnnouncementAudio() {
+            if (isPlayingDemoAudio) return;
+            const playButton = document.getElementById('playAudioButton');
+            try {
+                isPlayingDemoAudio = true;
+                if (playButton) {
+                    playButton.disabled = true;
+                    playButton.textContent = 'Playing...';
                 }
-                replayNode.textContent += (replayWordIndex === 0 ? '' : ' ') + replayWords[replayWordIndex];
-                replayWordIndex += 1;
-            }, 90);
-            demoTimers.push(wordTimer);
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: REQUIRED_GOAL_TEXT, voice: DEMO_DJ_VOICE_ID })
+                });
+                if (!response.ok) throw new Error('TTS request failed');
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.onended = () => URL.revokeObjectURL(audioUrl);
+                audio.onerror = () => URL.revokeObjectURL(audioUrl);
+                await audio.play();
+            } catch (error) {
+                console.error('Demo TTS playback failed:', error);
+                alert('Could not play DJ announcer audio right now.');
+            } finally {
+                isPlayingDemoAudio = false;
+                if (playButton) {
+                    playButton.disabled = false;
+                    playButton.textContent = 'Play DJ Announcer Audio';
+                }
+            }
         }
 
         function handleDemoPrimaryClick() {
             if (demoStepIndex === 6) {
-                playReplayAnimation();
-                demoStepIndex += 1;
-                scheduleTimer(renderDemo, 1300);
+                playDemoAnnouncementAudio();
                 return;
             }
             if (demoStepIndex >= DEMO_STEPS.length - 1) {
-                window.location.href = 'v2/login.html';
+                restartDemo();
                 return;
             }
             demoStepIndex += 1;
             renderDemo();
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape') return;
-            const modal = document.getElementById('demoModal');
-            if (modal && modal.classList.contains('is-open')) closeDemoModal();
+        document.addEventListener('DOMContentLoaded', () => {
+            restartDemo();
         });
     </script>
 </body>
