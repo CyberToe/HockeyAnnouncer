@@ -8,8 +8,15 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
+        .home-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
         .home-landing {
-            max-width: 560px;
+            max-width: 960px;
             margin: 0 auto;
         }
         .home-landing h2 {
@@ -29,12 +36,12 @@
         .home-actions {
             margin-top: 28px;
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
             gap: 14px;
+            flex-wrap: wrap;
         }
         .home-actions .btn {
-            min-width: 220px;
+            width: 220px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
@@ -47,35 +54,249 @@
         .home-demo-btn:hover {
             background: #15803d;
         }
-        .demo-modal {
-            display: none; position: fixed; inset: 0; z-index: 1000;
-            align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+        .home-top-right {
+            display: inline-flex;
+            align-items: center;
         }
-        .demo-modal.is-open { display: flex; }
-        .demo-modal-backdrop {
-            position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); cursor: pointer; border: none; padding: 0;
+        .home-top-right .btn {
+            text-decoration: none;
+            white-space: nowrap;
         }
-        .demo-modal-panel {
-            position: relative; z-index: 1; width: min(920px, 100%); max-height: calc(100vh - 40px);
-            background: #fff; border-radius: 10px; border: 2px solid #94a3b8;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); overflow: hidden;
-            display: flex; flex-direction: column;
+        .video-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        .demo-modal-header {
-            display: flex; align-items: center; justify-content: space-between; gap: 12px;
-            padding: 14px 16px; border-bottom: 2px solid #e2e8f0; flex-shrink: 0;
+        .video-modal.is-open {
+            display: flex;
         }
-        .demo-modal-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; color: #0f172a; }
-        .demo-modal-close {
-            padding: 6px 12px; background: #f1f5f9; color: #334155; border: 2px solid #94a3b8;
-            border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
+        .video-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            border: none;
+            background: rgba(15, 23, 42, 0.7);
+            cursor: pointer;
+            padding: 0;
         }
-        .demo-modal-close:hover { background: #e2e8f0; color: #0f172a; }
-        .demo-video-wrap {
-            position: relative; width: 100%; aspect-ratio: 16 / 9; background: #0f172a;
+        .video-modal-panel {
+            position: relative;
+            z-index: 1;
+            width: min(980px, 100%);
+            background: #ffffff;
+            border: 2px solid #94a3b8;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
         }
-        .demo-video-wrap iframe {
-            position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+        .video-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .video-modal-title {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .video-frame-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #0b1220;
+        }
+        .video-frame-wrap iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .home-instruction {
+            margin-top: 20px;
+            background: #f8fafc;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 16px;
+            color: #334155;
+        }
+        .home-instruction h3 {
+            margin: 0 0 8px 0;
+            color: #0f172a;
+            font-size: 1rem;
+        }
+        .home-instruction p {
+            margin: 0;
+            line-height: 1.45;
+        }
+        .demo-inline {
+            margin-top: 24px;
+            border: 2px solid #94a3b8;
+            border-radius: 10px;
+            background: #fff;
+            padding: 16px;
+        }
+        .demo-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .demo-progress {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .demo-progress-arrow {
+            color: #64748b;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .demo-pill {
+            border: 2px solid #94a3b8;
+            color: #475569;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #fff;
+        }
+        .demo-pill.active {
+            border-color: #2563eb;
+            color: #1d4ed8;
+            background: #eff6ff;
+        }
+        .demo-step-card {
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 14px;
+            background: #ffffff;
+        }
+        .demo-step-title {
+            margin: 0 0 4px 0;
+            color: #0f172a;
+            font-size: 1.05rem;
+        }
+        .demo-step-help {
+            margin: 0 0 12px 0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .demo-field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+        }
+        .demo-field {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f8fafc;
+        }
+        .demo-field.is-active {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+            background: #fffbeb;
+        }
+        .demo-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .demo-value {
+            color: #0f172a;
+            font-weight: 500;
+            min-height: 20px;
+        }
+        .demo-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #0f172a;
+            line-height: 1.5;
+        }
+        .demo-goal-log {
+            border: 2px dashed #93c5fd;
+            border-radius: 8px;
+            padding: 10px;
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-weight: 500;
+        }
+        .demo-replay {
+            border: 2px solid #bbf7d0;
+            border-radius: 8px;
+            background: #f0fdf4;
+            padding: 10px;
+        }
+        .demo-replay-text {
+            color: #14532d;
+            min-height: 48px;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+        .demo-speaker-image {
+            margin-top: 12px;
+            width: 100%;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            display: block;
+            background: #f8fafc;
+        }
+        .demo-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .demo-step-indicator {
+            color: #475569;
+            font-size: 0.87rem;
+            font-weight: 500;
+        }
+        .btn-demo-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-demo-secondary:hover {
+            background: #cbd5e1;
+        }
+        .btn-demo-highlight {
+            background: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+        .demo-fade {
+            animation: demoFade 0.45s ease;
+        }
+        @keyframes demoFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 640px) {
+            .home-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .home-top-right {
+                justify-content: flex-end;
+            }
+            .video-modal {
+                padding: 10px;
+            }
+            .demo-actions { flex-direction: column; align-items: stretch; }
+            .demo-actions .btn { width: 100%; }
         }
         .home-tagline {
             color: #64748b;
@@ -88,41 +309,64 @@
 <body>
     <div class="container">
         <header>
-            <h1>🏒 Hockey Goal Announcer</h1>
+            <div class="home-header">
+                <h1>🏒 Hockey Goal Announcer</h1>
+                <div class="home-top-right">
+                    <a href="v2/login.html" class="btn btn-primary">Login/Register</a>
+                </div>
+            </div>
             <p class="home-tagline">Goal calls, rosters, and game-day announcements in one place.</p>
         </header>
 
         <section class="home-landing" aria-label="About this site">
             <h2>Welcome</h2>
             <p class="home-lead">
-                This site helps you run hockey goal announcements: build home and away rosters, record who scored and assisted, and play polished text-to-speech calls when the puck goes in.
+                This site helps you run hockey goal announcements: build rosters, record who scored and assisted, and play polished text-to-speech calls when the puck goes in.
             </p>
             <p class="home-detail">
                 The live app uses accounts so your teams, games, and audio settings stay saved. Use Log in to open the sign-in page and get started.
             </p>
-            <div class="home-actions">
-                <a href="v2/login.html" class="btn btn-primary">Log in</a>
-                <button type="button" class="btn home-demo-btn" onclick="openDemoModal()">See demo</button>
+            <div class="home-instruction" aria-label="How it works">
+                <h3>How it works in 60 second</h3>
+                <p>
+                    Use the guided demo to see a full game-day flow: pre-game setup, recording a goal, and replaying the goal call. No data entry required.
+                </p>
             </div>
+            <div class="home-actions">
+                <button type="button" class="btn home-demo-btn" onclick="restartDemo()">Restart step-by-step demo</button>
+                <a
+                    href="#"
+                    onclick="openVideoModal(); return false;"
+                    class="btn btn-primary"
+                >Watch demo video</a>
+            </div>
+
+            <section class="demo-inline" aria-label="Guided demo mode">
+                <h2 style="margin: 0 0 8px 0; border-bottom: none;">Guided Demo Mode</h2>
+                <div class="demo-body">
+                    <div class="demo-progress" id="demoProgress" aria-label="Demo progress"></div>
+                    <div id="demoContent" class="demo-fade"></div>
+                    <div class="demo-actions">
+                        <span id="demoStepIndicator" class="demo-step-indicator">Step 1 of 8</span>
+                        <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-demo-secondary" onclick="restartDemo()">Restart</button>
+                            <button id="demoPrimaryButton" type="button" class="btn btn-primary" onclick="handleDemoPrimaryClick()">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </section>
     </div>
-
-    <div id="demoModal" class="demo-modal" aria-hidden="true">
-        <button type="button" class="demo-modal-backdrop" onclick="closeDemoModal()" aria-label="Close demo"></button>
-        <div
-            class="demo-modal-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="demoModalTitle"
-            onclick="event.stopPropagation()"
-        >
-            <div class="demo-modal-header">
-                <h2 id="demoModalTitle">Demo</h2>
-                <button type="button" class="demo-modal-close" onclick="closeDemoModal()">Close</button>
+    <div id="videoModal" class="video-modal" aria-hidden="true">
+        <button type="button" class="video-modal-backdrop" onclick="closeVideoModal()" aria-label="Close video"></button>
+        <div class="video-modal-panel" role="dialog" aria-modal="true" aria-labelledby="videoModalTitle" onclick="event.stopPropagation()">
+            <div class="video-modal-header">
+                <h3 id="videoModalTitle" class="video-modal-title">Hockey Goal Announcer Demo Video</h3>
+                <button type="button" class="btn btn-demo-secondary" onclick="closeVideoModal()">Close</button>
             </div>
-            <div class="demo-video-wrap">
+            <div class="video-frame-wrap">
                 <iframe
-                    id="demoVideoIframe"
+                    id="demoVideoFrame"
                     title="Hockey Goal Announcer demo video"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowfullscreen
@@ -132,32 +376,407 @@
     </div>
 
     <script>
-        const DEMO_VIDEO_EMBED = 'https://www.youtube.com/embed/0hOHVlVUnfA';
+        const DEMO_VIDEO_EMBED_URL = 'https://www.youtube-nocookie.com/embed/0hOHVlVUnfA?autoplay=1&rel=0&modestbranding=1&vq=hd1080';
+        const DEMO_STEPS = [
+            {
+                phase: 'Pre Game Day',
+                title: 'Step 1: Create Team',
+                help: 'Team setup is simulated and pre-filled so you can focus on workflow.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Pre Game Day',
+                title: 'Step 2: Add Players',
+                help: 'Players appear one by one, like real roster entry.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Pre Game Day',
+                title: 'Step 3: Create Game',
+                help: 'The game setup uses realistic values for both teams.',
+                buttonLabel: 'Create Game'
+            },
+            {
+                phase: 'Game Day',
+                title: 'Step 4: Confirm Attending Players',
+                help: 'Only selected players are marked as participating.',
+                buttonLabel: 'Start Game'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 5: Connect Device to Arena Speakers',
+                help: 'Connect your phone or laptop to the arena speaker system before announcing goals.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 6: Record Goal',
+                help: 'Goal details are selected automatically as if entered by a user.',
+                buttonLabel: 'Record Goal'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 7: Goal Log Display',
+                help: 'This is the generated goal text from the app workflow.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 8: Play Goal',
+                help: 'Use Play to read the registered goal text and play it with ElevenLabs Radio DJ voice.',
+                buttonLabel: 'Play Goal'
+            }
+        ];
 
-        function openDemoModal() {
-            const modal = document.getElementById('demoModal');
-            const iframe = document.getElementById('demoVideoIframe');
-            if (!modal || !iframe) return;
-            iframe.src = DEMO_VIDEO_EMBED;
+        const DEMO_PLAYERS_PITBULLS = ['#2 Clark', '#7 Thomas', '#14 Judy'];
+        const DEMO_PLAYERS_POTATOES = ['#2 Susan', '#9 Bill', '#67 Fred'];
+        const REQUIRED_GOAL_TEXT = 'Goal for the Pitbulls! by number 7, Thomas, assisted by number 2, Clark and number 14, Judy, in the first period with 4:25 remaining.';
+        const DEMO_DJ_VOICE_ID = 'KLoixBflzS2a9rg6nT8x';
+
+        let demoStepIndex = 0;
+        let demoTimers = [];
+        let isPlayingDemoAudio = false;
+
+        function restartDemo() {
+            demoStepIndex = 0;
+            renderDemo();
+        }
+
+        function clearDemoTimers() {
+            demoTimers.forEach((timer) => {
+                clearTimeout(timer);
+                clearInterval(timer);
+            });
+            demoTimers = [];
+        }
+
+        function scheduleTimer(callback, delay) {
+            const timer = setTimeout(callback, delay);
+            demoTimers.push(timer);
+        }
+
+        function renderDemo() {
+            clearDemoTimers();
+            const step = DEMO_STEPS[demoStepIndex];
+            const content = document.getElementById('demoContent');
+            const indicator = document.getElementById('demoStepIndicator');
+            const primaryButton = document.getElementById('demoPrimaryButton');
+            const progress = document.getElementById('demoProgress');
+            if (!content || !indicator || !primaryButton || !progress) return;
+
+            renderProgressPills(progress);
+            indicator.textContent = `Step ${demoStepIndex + 1} of ${DEMO_STEPS.length} · ${step.phase}`;
+            primaryButton.textContent = step.buttonLabel;
+            primaryButton.classList.toggle('btn-demo-highlight', true);
+            content.classList.remove('demo-fade');
+            void content.offsetWidth;
+            content.classList.add('demo-fade');
+
+            if (demoStepIndex === 0) renderCreateTeam(content);
+            if (demoStepIndex === 1) renderAddPlayers(content);
+            if (demoStepIndex === 2) renderCreateGame(content);
+            if (demoStepIndex === 3) renderConfirmPlayers(content);
+            if (demoStepIndex === 4) renderConnectSpeakers(content);
+            if (demoStepIndex === 5) renderRecordGoal(content);
+            if (demoStepIndex === 6) renderGoalLog(content);
+            if (demoStepIndex === 7) renderPlayGoal(content);
+        }
+
+        function renderProgressPills(progressNode) {
+            const phases = ['Pre Game Day', 'Game Day', 'Game On'];
+            const activePhase = DEMO_STEPS[demoStepIndex].phase;
+            progressNode.innerHTML = phases
+                .map((phase, index) => `
+                    <span class="demo-pill ${phase === activePhase ? 'active' : ''}">${phase}</span>
+                    ${index < phases.length - 1 ? '<span class="demo-progress-arrow" aria-hidden="true">→</span>' : ''}
+                `)
+                .join('');
+        }
+
+        function renderCreateTeam(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[0].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[0].help}</p>
+                    <div class="demo-field-grid">
+                        <div id="teamNameField" class="demo-field is-active">
+                            <div class="demo-label">Team Name</div>
+                            <div id="teamNameValue" class="demo-value"></div>
+                        </div>
+                        <div id="teamColorField" class="demo-field">
+                            <div class="demo-label">Team Color</div>
+                            <div id="teamColorValue" class="demo-value"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            typeValue('teamNameValue', 'Pitbulls', 120, () => {
+                document.getElementById('teamNameField').classList.remove('is-active');
+                document.getElementById('teamColorField').classList.add('is-active');
+                typeValue('teamColorValue', 'Blue', 160, () => {
+                    document.getElementById('teamColorField').classList.remove('is-active');
+                    if (demoStepIndex === 0) scheduleTimer(() => renderCreateTeam(node), 1200);
+                });
+            });
+        }
+
+        function renderAddPlayers(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[1].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[1].help}</p>
+                    <ul id="pitbullsPlayersList" class="demo-list"></ul>
+                </div>
+            `;
+            const list = document.getElementById('pitbullsPlayersList');
+            DEMO_PLAYERS_PITBULLS.forEach((player, index) => {
+                scheduleTimer(() => {
+                    if (!list) return;
+                    const li = document.createElement('li');
+                    li.textContent = player;
+                    list.appendChild(li);
+                }, 900 + (index * 1200));
+            });
+            scheduleTimer(() => {
+                if (demoStepIndex === 1) renderAddPlayers(node);
+            }, 5200);
+        }
+
+        function renderCreateGame(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[2].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[2].help}</p>
+                    <div class="demo-field-grid">
+                        <div id="createGameA" class="demo-field is-active"><div class="demo-label">First Team</div><div class="demo-value">Pitbulls</div></div>
+                        <div id="createGameB" class="demo-field"><div class="demo-label">Second Team</div><div class="demo-value">Potatoes</div></div>
+                        <div id="createGameName" class="demo-field"><div class="demo-label">Game Name</div><div class="demo-value">Demo Game</div></div>
+                    </div>
+                </div>
+            `;
+            scheduleTimer(() => {
+                const a = document.getElementById('createGameA');
+                const b = document.getElementById('createGameB');
+                if (a && b) {
+                    a.classList.remove('is-active');
+                    b.classList.add('is-active');
+                }
+            }, 1200);
+            scheduleTimer(() => {
+                const b = document.getElementById('createGameB');
+                const c = document.getElementById('createGameName');
+                if (b && c) {
+                    b.classList.remove('is-active');
+                    c.classList.add('is-active');
+                }
+            }, 2400);
+            scheduleTimer(() => {
+                if (demoStepIndex === 2) renderCreateGame(node);
+            }, 4300);
+        }
+
+        function renderConfirmPlayers(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[3].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[3].help}</p>
+                    <div class="demo-field-grid">
+                        <div id="confirmA" class="demo-field is-active">
+                            <div class="demo-label">Pitbulls Selected</div>
+                            <div class="demo-value">${DEMO_PLAYERS_PITBULLS.join(', ')}</div>
+                        </div>
+                        <div id="confirmB" class="demo-field">
+                            <div class="demo-label">Potatoes Selected</div>
+                            <div class="demo-value">${DEMO_PLAYERS_POTATOES.join(', ')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            scheduleTimer(() => {
+                const a = document.getElementById('confirmA');
+                const b = document.getElementById('confirmB');
+                if (a && b) {
+                    a.classList.remove('is-active');
+                    b.classList.add('is-active');
+                }
+            }, 1500);
+            scheduleTimer(() => {
+                if (demoStepIndex === 3) renderConfirmPlayers(node);
+            }, 3500);
+        }
+
+        function renderRecordGoal(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[5].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[5].help}</p>
+                    <div class="demo-field-grid">
+                        <div id="goalField0" class="demo-field is-active"><div class="demo-label">Scoring Team</div><div class="demo-value">Pitbulls</div></div>
+                        <div id="goalField1" class="demo-field"><div class="demo-label">Scorer</div><div class="demo-value">#7 Thomas</div></div>
+                        <div id="goalField2" class="demo-field"><div class="demo-label">Assist 1</div><div class="demo-value">#2 Clark</div></div>
+                        <div id="goalField3" class="demo-field"><div class="demo-label">Assist 2</div><div class="demo-value">#14 Judy</div></div>
+                        <div id="goalField4" class="demo-field"><div class="demo-label">Period</div><div class="demo-value">1st Period</div></div>
+                        <div id="goalField5" class="demo-field"><div class="demo-label">Time Remaining</div><div class="demo-value">4:25</div></div>
+                    </div>
+                </div>
+            `;
+            for (let i = 1; i < 6; i += 1) {
+                scheduleTimer(() => {
+                    const prev = document.getElementById(`goalField${i - 1}`);
+                    const next = document.getElementById(`goalField${i}`);
+                    if (prev) prev.classList.remove('is-active');
+                    if (next) next.classList.add('is-active');
+                }, 900 + (i * 700));
+            }
+            scheduleTimer(() => {
+                if (demoStepIndex === 5) renderRecordGoal(node);
+            }, 5900);
+        }
+
+        function renderConnectSpeakers(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[4].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[4].help}</p>
+                    <div class="demo-replay">
+                        <div class="demo-replay-text">Connect your mobile or laptop audio output to the arena speaker input before you start announcements.</div>
+                    </div>
+                    <img
+                        src="assets/arena-speakers-step.png"
+                        alt="Phone and laptop connected to arena speakers"
+                        class="demo-speaker-image"
+                    >
+                </div>
+            `;
+            scheduleTimer(() => {
+                if (demoStepIndex === 4) renderConnectSpeakers(node);
+            }, 4200);
+        }
+
+        function renderGoalLog(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[6].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[6].help}</p>
+                    <div class="demo-goal-log">${REQUIRED_GOAL_TEXT}</div>
+                </div>
+            `;
+            scheduleTimer(() => {
+                if (demoStepIndex === 6) renderGoalLog(node);
+            }, 3600);
+        }
+
+        function renderPlayGoal(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[7].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[7].help}</p>
+                    <div class="demo-replay">
+                        <div id="replayText" class="demo-replay-text">${REQUIRED_GOAL_TEXT}</div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button id="playAudioButton" type="button" class="btn btn-primary" onclick="playDemoAnnouncementAudio()">Play DJ Announcer Audio</button>
+                    </div>
+                </div>
+            `;
+            scheduleTimer(() => {
+                if (demoStepIndex === 7) renderPlayGoal(node);
+            }, 3600);
+        }
+
+        function typeValue(targetId, text, speed, doneCallback) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            target.textContent = '';
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= text.length) {
+                    clearInterval(interval);
+                    if (doneCallback) doneCallback();
+                    return;
+                }
+                target.textContent += text.charAt(i);
+                i += 1;
+            }, speed);
+            demoTimers.push(interval);
+        }
+
+        async function playDemoAnnouncementAudio() {
+            if (isPlayingDemoAudio) return;
+            const playButton = document.getElementById('playAudioButton');
+            try {
+                isPlayingDemoAudio = true;
+                if (playButton) {
+                    playButton.disabled = true;
+                    playButton.textContent = 'Playing...';
+                }
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: REQUIRED_GOAL_TEXT, voice: DEMO_DJ_VOICE_ID })
+                });
+                if (!response.ok) throw new Error('TTS request failed');
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.onended = () => URL.revokeObjectURL(audioUrl);
+                audio.onerror = () => URL.revokeObjectURL(audioUrl);
+                await audio.play();
+            } catch (error) {
+                console.error('Demo TTS playback failed:', error);
+                alert('Could not play DJ announcer audio right now.');
+            } finally {
+                isPlayingDemoAudio = false;
+                if (playButton) {
+                    playButton.disabled = false;
+                    playButton.textContent = 'Play DJ Announcer Audio';
+                }
+            }
+        }
+
+        function handleDemoPrimaryClick() {
+            if (demoStepIndex === 7) {
+                playDemoAnnouncementAudio();
+                return;
+            }
+            if (demoStepIndex >= DEMO_STEPS.length - 1) {
+                restartDemo();
+                return;
+            }
+            demoStepIndex += 1;
+            renderDemo();
+        }
+
+        function openVideoModal() {
+            const modal = document.getElementById('videoModal');
+            const frame = document.getElementById('demoVideoFrame');
+            if (!modal || !frame) return;
+            frame.src = DEMO_VIDEO_EMBED_URL;
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
         }
 
-        function closeDemoModal() {
-            const modal = document.getElementById('demoModal');
-            const iframe = document.getElementById('demoVideoIframe');
-            if (!modal || !iframe) return;
-            iframe.src = '';
+        function closeVideoModal() {
+            const modal = document.getElementById('videoModal');
+            const frame = document.getElementById('demoVideoFrame');
+            if (!modal || !frame) return;
+            frame.src = '';
             modal.classList.remove('is-open');
             modal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape') return;
-            const modal = document.getElementById('demoModal');
-            if (modal && modal.classList.contains('is-open')) closeDemoModal();
+        document.addEventListener('DOMContentLoaded', () => {
+            restartDemo();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            const modal = document.getElementById('videoModal');
+            if (modal && modal.classList.contains('is-open')) {
+                closeVideoModal();
+            }
         });
     </script>
 </body>
