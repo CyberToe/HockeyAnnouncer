@@ -327,7 +327,7 @@
                 The live app uses accounts so your teams, games, and audio settings stay saved. Use Log in to open the sign-in page and get started.
             </p>
             <div class="home-instruction" aria-label="How it works">
-                <h3>How it works in 60-90 seconds</h3>
+                <h3>How it works in 60 second</h3>
                 <p>
                     Use the guided demo to see a full game-day flow: pre-game setup, recording a goal, and replaying the goal call. No data entry required.
                 </p>
@@ -510,11 +510,12 @@
                     </div>
                 </div>
             `;
-            typeValue('teamNameValue', 'Pitbulls', 60, () => {
+            typeValue('teamNameValue', 'Pitbulls', 120, () => {
                 document.getElementById('teamNameField').classList.remove('is-active');
                 document.getElementById('teamColorField').classList.add('is-active');
-                typeValue('teamColorValue', 'Blue', 85, () => {
+                typeValue('teamColorValue', 'Blue', 160, () => {
                     document.getElementById('teamColorField').classList.remove('is-active');
+                    if (demoStepIndex === 0) scheduleTimer(() => renderCreateTeam(node), 1200);
                 });
             });
         }
@@ -534,8 +535,11 @@
                     const li = document.createElement('li');
                     li.textContent = player;
                     list.appendChild(li);
-                }, 500 + (index * 650));
+                }, 900 + (index * 1200));
             });
+            scheduleTimer(() => {
+                if (demoStepIndex === 1) renderAddPlayers(node);
+            }, 5200);
         }
 
         function renderCreateGame(node) {
@@ -544,12 +548,31 @@
                     <h3 class="demo-step-title">${DEMO_STEPS[2].title}</h3>
                     <p class="demo-step-help">${DEMO_STEPS[2].help}</p>
                     <div class="demo-field-grid">
-                        <div class="demo-field is-active"><div class="demo-label">First Team</div><div class="demo-value">Pitbulls</div></div>
-                        <div class="demo-field"><div class="demo-label">Second Team</div><div class="demo-value">Potatoes</div></div>
-                        <div class="demo-field"><div class="demo-label">Game Name</div><div class="demo-value">Demo Game</div></div>
+                        <div id="createGameA" class="demo-field is-active"><div class="demo-label">First Team</div><div class="demo-value">Pitbulls</div></div>
+                        <div id="createGameB" class="demo-field"><div class="demo-label">Second Team</div><div class="demo-value">Potatoes</div></div>
+                        <div id="createGameName" class="demo-field"><div class="demo-label">Game Name</div><div class="demo-value">Demo Game</div></div>
                     </div>
                 </div>
             `;
+            scheduleTimer(() => {
+                const a = document.getElementById('createGameA');
+                const b = document.getElementById('createGameB');
+                if (a && b) {
+                    a.classList.remove('is-active');
+                    b.classList.add('is-active');
+                }
+            }, 1200);
+            scheduleTimer(() => {
+                const b = document.getElementById('createGameB');
+                const c = document.getElementById('createGameName');
+                if (b && c) {
+                    b.classList.remove('is-active');
+                    c.classList.add('is-active');
+                }
+            }, 2400);
+            scheduleTimer(() => {
+                if (demoStepIndex === 2) renderCreateGame(node);
+            }, 4300);
         }
 
         function renderConfirmPlayers(node) {
@@ -558,17 +581,28 @@
                     <h3 class="demo-step-title">${DEMO_STEPS[3].title}</h3>
                     <p class="demo-step-help">${DEMO_STEPS[3].help}</p>
                     <div class="demo-field-grid">
-                        <div class="demo-field is-active">
+                        <div id="confirmA" class="demo-field is-active">
                             <div class="demo-label">Pitbulls Selected</div>
                             <div class="demo-value">${DEMO_PLAYERS_PITBULLS.join(', ')}</div>
                         </div>
-                        <div class="demo-field">
+                        <div id="confirmB" class="demo-field">
                             <div class="demo-label">Potatoes Selected</div>
                             <div class="demo-value">${DEMO_PLAYERS_POTATOES.join(', ')}</div>
                         </div>
                     </div>
                 </div>
             `;
+            scheduleTimer(() => {
+                const a = document.getElementById('confirmA');
+                const b = document.getElementById('confirmB');
+                if (a && b) {
+                    a.classList.remove('is-active');
+                    b.classList.add('is-active');
+                }
+            }, 1500);
+            scheduleTimer(() => {
+                if (demoStepIndex === 3) renderConfirmPlayers(node);
+            }, 3500);
         }
 
         function renderRecordGoal(node) {
@@ -577,15 +611,26 @@
                     <h3 class="demo-step-title">${DEMO_STEPS[5].title}</h3>
                     <p class="demo-step-help">${DEMO_STEPS[5].help}</p>
                     <div class="demo-field-grid">
-                        <div class="demo-field is-active"><div class="demo-label">Scoring Team</div><div class="demo-value">Pitbulls</div></div>
-                        <div class="demo-field"><div class="demo-label">Scorer</div><div class="demo-value">#7 Thomas</div></div>
-                        <div class="demo-field"><div class="demo-label">Assist 1</div><div class="demo-value">#2 Clark</div></div>
-                        <div class="demo-field"><div class="demo-label">Assist 2</div><div class="demo-value">#14 Judy</div></div>
-                        <div class="demo-field"><div class="demo-label">Period</div><div class="demo-value">1st Period</div></div>
-                        <div class="demo-field"><div class="demo-label">Time Remaining</div><div class="demo-value">4:25</div></div>
+                        <div id="goalField0" class="demo-field is-active"><div class="demo-label">Scoring Team</div><div class="demo-value">Pitbulls</div></div>
+                        <div id="goalField1" class="demo-field"><div class="demo-label">Scorer</div><div class="demo-value">#7 Thomas</div></div>
+                        <div id="goalField2" class="demo-field"><div class="demo-label">Assist 1</div><div class="demo-value">#2 Clark</div></div>
+                        <div id="goalField3" class="demo-field"><div class="demo-label">Assist 2</div><div class="demo-value">#14 Judy</div></div>
+                        <div id="goalField4" class="demo-field"><div class="demo-label">Period</div><div class="demo-value">1st Period</div></div>
+                        <div id="goalField5" class="demo-field"><div class="demo-label">Time Remaining</div><div class="demo-value">4:25</div></div>
                     </div>
                 </div>
             `;
+            for (let i = 1; i < 6; i += 1) {
+                scheduleTimer(() => {
+                    const prev = document.getElementById(`goalField${i - 1}`);
+                    const next = document.getElementById(`goalField${i}`);
+                    if (prev) prev.classList.remove('is-active');
+                    if (next) next.classList.add('is-active');
+                }, 900 + (i * 700));
+            }
+            scheduleTimer(() => {
+                if (demoStepIndex === 5) renderRecordGoal(node);
+            }, 5900);
         }
 
         function renderConnectSpeakers(node) {
@@ -603,6 +648,9 @@
                     >
                 </div>
             `;
+            scheduleTimer(() => {
+                if (demoStepIndex === 4) renderConnectSpeakers(node);
+            }, 4200);
         }
 
         function renderGoalLog(node) {
@@ -613,6 +661,9 @@
                     <div class="demo-goal-log">${REQUIRED_GOAL_TEXT}</div>
                 </div>
             `;
+            scheduleTimer(() => {
+                if (demoStepIndex === 6) renderGoalLog(node);
+            }, 3600);
         }
 
         function renderPlayGoal(node) {
@@ -628,6 +679,9 @@
                     </div>
                 </div>
             `;
+            scheduleTimer(() => {
+                if (demoStepIndex === 7) renderPlayGoal(node);
+            }, 3600);
         }
 
         function typeValue(targetId, text, speed, doneCallback) {
