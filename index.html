@@ -95,6 +95,13 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            align-items: center;
+        }
+        .demo-progress-arrow {
+            color: #64748b;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1;
         }
         .demo-pill {
             border: 2px solid #94a3b8;
@@ -181,6 +188,14 @@
             line-height: 1.5;
             font-weight: 500;
         }
+        .demo-speaker-image {
+            margin-top: 12px;
+            width: 100%;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            display: block;
+            background: #f8fafc;
+        }
         .demo-actions {
             display: flex;
             justify-content: space-between;
@@ -266,7 +281,7 @@
                     <div class="demo-progress" id="demoProgress" aria-label="Demo progress"></div>
                     <div id="demoContent" class="demo-fade"></div>
                     <div class="demo-actions">
-                        <span id="demoStepIndicator" class="demo-step-indicator">Step 1 of 7</span>
+                        <span id="demoStepIndicator" class="demo-step-indicator">Step 1 of 8</span>
                         <div style="display:flex; gap:10px; flex-wrap: wrap;">
                             <button type="button" class="btn btn-demo-secondary" onclick="restartDemo()">Restart</button>
                             <button id="demoPrimaryButton" type="button" class="btn btn-primary" onclick="handleDemoPrimaryClick()">Next</button>
@@ -305,19 +320,25 @@
             },
             {
                 phase: 'Game On',
-                title: 'Step 5: Record Goal',
+                title: 'Step 5: Connect Device to Arena Speakers',
+                help: 'Connect your phone or laptop to the arena speaker system before announcing goals.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 6: Record Goal',
                 help: 'Goal details are selected automatically as if entered by a user.',
                 buttonLabel: 'Record Goal'
             },
             {
                 phase: 'Game On',
-                title: 'Step 6: Goal Log Display',
+                title: 'Step 7: Goal Log Display',
                 help: 'This is the generated goal text from the app workflow.',
                 buttonLabel: 'Next'
             },
             {
                 phase: 'Game On',
-                title: 'Step 7: Play Goal',
+                title: 'Step 8: Play Goal',
                 help: 'Use Play to read the registered goal text and play it with ElevenLabs Radio DJ voice.',
                 buttonLabel: 'Play Goal'
             }
@@ -371,16 +392,20 @@
             if (demoStepIndex === 1) renderAddPlayers(content);
             if (demoStepIndex === 2) renderCreateGame(content);
             if (demoStepIndex === 3) renderConfirmPlayers(content);
-            if (demoStepIndex === 4) renderRecordGoal(content);
-            if (demoStepIndex === 5) renderGoalLog(content);
-            if (demoStepIndex === 6) renderPlayGoal(content);
+            if (demoStepIndex === 4) renderConnectSpeakers(content);
+            if (demoStepIndex === 5) renderRecordGoal(content);
+            if (demoStepIndex === 6) renderGoalLog(content);
+            if (demoStepIndex === 7) renderPlayGoal(content);
         }
 
         function renderProgressPills(progressNode) {
             const phases = ['Pre Game Day', 'Game Day', 'Game On'];
             const activePhase = DEMO_STEPS[demoStepIndex].phase;
             progressNode.innerHTML = phases
-                .map((phase) => `<span class="demo-pill ${phase === activePhase ? 'active' : ''}">${phase}</span>`)
+                .map((phase, index) => `
+                    <span class="demo-pill ${phase === activePhase ? 'active' : ''}">${phase}</span>
+                    ${index < phases.length - 1 ? '<span class="demo-progress-arrow" aria-hidden="true">→</span>' : ''}
+                `)
                 .join('');
         }
 
@@ -465,8 +490,8 @@
         function renderRecordGoal(node) {
             node.innerHTML = `
                 <div class="demo-step-card">
-                    <h3 class="demo-step-title">${DEMO_STEPS[4].title}</h3>
-                    <p class="demo-step-help">${DEMO_STEPS[4].help}</p>
+                    <h3 class="demo-step-title">${DEMO_STEPS[5].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[5].help}</p>
                     <div class="demo-field-grid">
                         <div class="demo-field is-active"><div class="demo-label">Scoring Team</div><div class="demo-value">Pitbulls</div></div>
                         <div class="demo-field"><div class="demo-label">Scorer</div><div class="demo-value">#7 Thomas</div></div>
@@ -479,11 +504,28 @@
             `;
         }
 
+        function renderConnectSpeakers(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[4].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[4].help}</p>
+                    <div class="demo-replay">
+                        <div class="demo-replay-text">Connect your mobile or laptop audio output to the arena speaker input before you start announcements.</div>
+                    </div>
+                    <img
+                        src="assets/arena-speakers-step.png"
+                        alt="Phone and laptop connected to arena speakers"
+                        class="demo-speaker-image"
+                    >
+                </div>
+            `;
+        }
+
         function renderGoalLog(node) {
             node.innerHTML = `
                 <div class="demo-step-card">
-                    <h3 class="demo-step-title">${DEMO_STEPS[5].title}</h3>
-                    <p class="demo-step-help">${DEMO_STEPS[5].help}</p>
+                    <h3 class="demo-step-title">${DEMO_STEPS[6].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[6].help}</p>
                     <div class="demo-goal-log">${REQUIRED_GOAL_TEXT}</div>
                 </div>
             `;
@@ -492,8 +534,8 @@
         function renderPlayGoal(node) {
             node.innerHTML = `
                 <div class="demo-step-card">
-                    <h3 class="demo-step-title">${DEMO_STEPS[6].title}</h3>
-                    <p class="demo-step-help">${DEMO_STEPS[6].help}</p>
+                    <h3 class="demo-step-title">${DEMO_STEPS[7].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[7].help}</p>
                     <div class="demo-replay">
                         <div id="replayText" class="demo-replay-text">${REQUIRED_GOAL_TEXT}</div>
                     </div>
@@ -555,7 +597,7 @@
         }
 
         function handleDemoPrimaryClick() {
-            if (demoStepIndex === 6) {
+            if (demoStepIndex === 7) {
                 playDemoAnnouncementAudio();
                 return;
             }
