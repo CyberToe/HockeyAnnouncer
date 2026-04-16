@@ -71,11 +71,155 @@
             border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;
         }
         .demo-modal-close:hover { background: #e2e8f0; color: #0f172a; }
-        .demo-video-wrap {
-            position: relative; width: 100%; aspect-ratio: 16 / 9; background: #0f172a;
+        .home-instruction {
+            margin-top: 20px;
+            background: #f8fafc;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 16px;
+            color: #334155;
         }
-        .demo-video-wrap iframe {
-            position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+        .home-instruction h3 {
+            margin: 0 0 8px 0;
+            color: #0f172a;
+            font-size: 1rem;
+        }
+        .home-instruction p {
+            margin: 0;
+            line-height: 1.45;
+        }
+        .demo-body {
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .demo-progress {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .demo-pill {
+            border: 2px solid #94a3b8;
+            color: #475569;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: #fff;
+        }
+        .demo-pill.active {
+            border-color: #2563eb;
+            color: #1d4ed8;
+            background: #eff6ff;
+        }
+        .demo-step-card {
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 14px;
+            background: #ffffff;
+        }
+        .demo-step-title {
+            margin: 0 0 4px 0;
+            color: #0f172a;
+            font-size: 1.05rem;
+        }
+        .demo-step-help {
+            margin: 0 0 12px 0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .demo-field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+        }
+        .demo-field {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f8fafc;
+        }
+        .demo-field.is-active {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+            background: #fffbeb;
+        }
+        .demo-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .demo-value {
+            color: #0f172a;
+            font-weight: 500;
+            min-height: 20px;
+        }
+        .demo-list {
+            margin: 0;
+            padding-left: 18px;
+            color: #0f172a;
+            line-height: 1.5;
+        }
+        .demo-goal-log {
+            border: 2px dashed #93c5fd;
+            border-radius: 8px;
+            padding: 10px;
+            background: #eff6ff;
+            color: #1e3a8a;
+            font-weight: 500;
+        }
+        .demo-replay {
+            border: 2px solid #bbf7d0;
+            border-radius: 8px;
+            background: #f0fdf4;
+            padding: 10px;
+        }
+        .demo-replay-text {
+            color: #14532d;
+            min-height: 48px;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+        .demo-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .demo-step-indicator {
+            color: #475569;
+            font-size: 0.87rem;
+            font-weight: 500;
+        }
+        .btn-demo-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .btn-demo-secondary:hover {
+            background: #cbd5e1;
+        }
+        .btn-demo-highlight {
+            background: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+        .demo-fade {
+            animation: demoFade 0.45s ease;
+        }
+        @keyframes demoFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 640px) {
+            .demo-modal { padding: 10px; }
+            .demo-modal-panel { max-height: calc(100vh - 20px); }
+            .demo-actions { flex-direction: column; align-items: stretch; }
+            .demo-actions .btn { width: 100%; }
         }
         .home-tagline {
             color: #64748b;
@@ -100,9 +244,15 @@
             <p class="home-detail">
                 The live app uses accounts so your teams, games, and audio settings stay saved. Use Log in to open the sign-in page and get started.
             </p>
+            <div class="home-instruction" aria-label="How it works">
+                <h3>How it works in 60-90 seconds</h3>
+                <p>
+                    Use the guided demo to see a full game-day flow: pre-game setup, recording a goal, and replaying the goal call. No data entry required.
+                </p>
+            </div>
             <div class="home-actions">
                 <a href="v2/login.html" class="btn btn-primary">Log in</a>
-                <button type="button" class="btn home-demo-btn" onclick="openDemoModal()">See demo</button>
+                <button type="button" class="btn home-demo-btn" onclick="openDemoModal()">Start guided demo</button>
             </div>
         </section>
     </div>
@@ -117,41 +267,328 @@
             onclick="event.stopPropagation()"
         >
             <div class="demo-modal-header">
-                <h2 id="demoModalTitle">Demo</h2>
+                <h2 id="demoModalTitle">Guided Demo Mode</h2>
                 <button type="button" class="demo-modal-close" onclick="closeDemoModal()">Close</button>
             </div>
-            <div class="demo-video-wrap">
-                <iframe
-                    id="demoVideoIframe"
-                    title="Hockey Goal Announcer demo video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowfullscreen
-                ></iframe>
+            <div class="demo-body">
+                <div class="demo-progress" id="demoProgress" aria-label="Demo progress"></div>
+                <div id="demoContent" class="demo-fade"></div>
+                <div class="demo-actions">
+                    <span id="demoStepIndicator" class="demo-step-indicator">Step 1 of 8</span>
+                    <div style="display:flex; gap:10px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-demo-secondary" onclick="closeDemoModal()">Skip Demo</button>
+                        <button id="demoPrimaryButton" type="button" class="btn btn-primary" onclick="handleDemoPrimaryClick()">Next</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        const DEMO_VIDEO_EMBED = 'https://www.youtube.com/embed/0hOHVlVUnfA';
+        const DEMO_STEPS = [
+            {
+                phase: 'Pre Game Day',
+                title: 'Step 1: Create Team',
+                help: 'Team setup is simulated and pre-filled so you can focus on workflow.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Pre Game Day',
+                title: 'Step 2: Add Players',
+                help: 'Players appear one by one, like real roster entry.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Pre Game Day',
+                title: 'Step 3: Create Game',
+                help: 'The game setup uses realistic values for both teams.',
+                buttonLabel: 'Create Game'
+            },
+            {
+                phase: 'Game Day',
+                title: 'Step 4: Confirm Attending Players',
+                help: 'Only selected players are marked as participating.',
+                buttonLabel: 'Start Game'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 5: Record Goal',
+                help: 'Goal details are selected automatically as if entered by a user.',
+                buttonLabel: 'Record Goal'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 6: Goal Log Display',
+                help: 'This is the generated goal text from the app workflow.',
+                buttonLabel: 'Next'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 7: Play Goal',
+                help: 'Use Play to replay the announcement with visual text animation.',
+                buttonLabel: 'Play Goal'
+            },
+            {
+                phase: 'Game On',
+                title: 'Step 8: Completion',
+                help: 'You have completed the full end-to-end demo.',
+                buttonLabel: 'Create Your First Team'
+            }
+        ];
+
+        const DEMO_PLAYERS_PITBULLS = ['#2 Clark', '#7 Thomas', '#14 Judy'];
+        const DEMO_PLAYERS_POTATOES = ['#2 Susan', '#9 Bill', '#67 Fred'];
+        const REQUIRED_GOAL_TEXT = 'Goal for the Pitbulls! by number 7, Thomas, assisted by number 2, Clark and number 14, Judy, in the first period with 4:25 remaining.';
+
+        let demoStepIndex = 0;
+        let demoTimers = [];
+        let replayWordIndex = 0;
+        let replayWords = [];
 
         function openDemoModal() {
             const modal = document.getElementById('demoModal');
-            const iframe = document.getElementById('demoVideoIframe');
-            if (!modal || !iframe) return;
-            iframe.src = DEMO_VIDEO_EMBED;
+            if (!modal) return;
+            demoStepIndex = 0;
             modal.classList.add('is-open');
             modal.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
+            renderDemo();
         }
 
         function closeDemoModal() {
             const modal = document.getElementById('demoModal');
-            const iframe = document.getElementById('demoVideoIframe');
-            if (!modal || !iframe) return;
-            iframe.src = '';
+            if (!modal) return;
+            clearDemoTimers();
             modal.classList.remove('is-open');
             modal.setAttribute('aria-hidden', 'true');
             document.body.style.overflow = '';
+        }
+
+        function clearDemoTimers() {
+            demoTimers.forEach((timer) => clearTimeout(timer));
+            demoTimers = [];
+        }
+
+        function scheduleTimer(callback, delay) {
+            const timer = setTimeout(callback, delay);
+            demoTimers.push(timer);
+        }
+
+        function renderDemo() {
+            clearDemoTimers();
+            const step = DEMO_STEPS[demoStepIndex];
+            const content = document.getElementById('demoContent');
+            const indicator = document.getElementById('demoStepIndicator');
+            const primaryButton = document.getElementById('demoPrimaryButton');
+            const progress = document.getElementById('demoProgress');
+            if (!content || !indicator || !primaryButton || !progress) return;
+
+            renderProgressPills(progress);
+            indicator.textContent = `Step ${demoStepIndex + 1} of ${DEMO_STEPS.length} · ${step.phase}`;
+            primaryButton.textContent = step.buttonLabel;
+            primaryButton.classList.toggle('btn-demo-highlight', true);
+            content.classList.remove('demo-fade');
+            void content.offsetWidth;
+            content.classList.add('demo-fade');
+
+            if (demoStepIndex === 0) renderCreateTeam(content);
+            if (demoStepIndex === 1) renderAddPlayers(content);
+            if (demoStepIndex === 2) renderCreateGame(content);
+            if (demoStepIndex === 3) renderConfirmPlayers(content);
+            if (demoStepIndex === 4) renderRecordGoal(content);
+            if (demoStepIndex === 5) renderGoalLog(content);
+            if (demoStepIndex === 6) renderPlayGoal(content);
+            if (demoStepIndex === 7) renderCompletion(content);
+        }
+
+        function renderProgressPills(progressNode) {
+            const phases = ['Pre Game Day', 'Game Day', 'Game On'];
+            const activePhase = DEMO_STEPS[demoStepIndex].phase;
+            progressNode.innerHTML = phases
+                .map((phase) => `<span class="demo-pill ${phase === activePhase ? 'active' : ''}">${phase}</span>`)
+                .join('');
+        }
+
+        function renderCreateTeam(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[0].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[0].help}</p>
+                    <div class="demo-field-grid">
+                        <div id="teamNameField" class="demo-field is-active">
+                            <div class="demo-label">Team Name</div>
+                            <div id="teamNameValue" class="demo-value"></div>
+                        </div>
+                        <div id="teamColorField" class="demo-field">
+                            <div class="demo-label">Team Color</div>
+                            <div id="teamColorValue" class="demo-value"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            typeValue('teamNameValue', 'Pitbulls', 60, () => {
+                document.getElementById('teamNameField').classList.remove('is-active');
+                document.getElementById('teamColorField').classList.add('is-active');
+                typeValue('teamColorValue', 'Blue', 85, () => {
+                    document.getElementById('teamColorField').classList.remove('is-active');
+                });
+            });
+        }
+
+        function renderAddPlayers(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[1].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[1].help}</p>
+                    <ul id="pitbullsPlayersList" class="demo-list"></ul>
+                </div>
+            `;
+            const list = document.getElementById('pitbullsPlayersList');
+            DEMO_PLAYERS_PITBULLS.forEach((player, index) => {
+                scheduleTimer(() => {
+                    if (!list) return;
+                    const li = document.createElement('li');
+                    li.textContent = player;
+                    list.appendChild(li);
+                }, 500 + (index * 650));
+            });
+        }
+
+        function renderCreateGame(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[2].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[2].help}</p>
+                    <div class="demo-field-grid">
+                        <div class="demo-field is-active"><div class="demo-label">First Team</div><div class="demo-value">Pitbulls</div></div>
+                        <div class="demo-field"><div class="demo-label">Second Team</div><div class="demo-value">Potatoes</div></div>
+                        <div class="demo-field"><div class="demo-label">Game Name</div><div class="demo-value">Demo Game</div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderConfirmPlayers(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[3].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[3].help}</p>
+                    <div class="demo-field-grid">
+                        <div class="demo-field is-active">
+                            <div class="demo-label">Pitbulls Selected</div>
+                            <div class="demo-value">${DEMO_PLAYERS_PITBULLS.join(', ')}</div>
+                        </div>
+                        <div class="demo-field">
+                            <div class="demo-label">Potatoes Selected</div>
+                            <div class="demo-value">${DEMO_PLAYERS_POTATOES.join(', ')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRecordGoal(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[4].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[4].help}</p>
+                    <div class="demo-field-grid">
+                        <div class="demo-field is-active"><div class="demo-label">Scoring Team</div><div class="demo-value">Pitbulls</div></div>
+                        <div class="demo-field"><div class="demo-label">Scorer</div><div class="demo-value">#7 Thomas</div></div>
+                        <div class="demo-field"><div class="demo-label">Assist 1</div><div class="demo-value">#2 Clark</div></div>
+                        <div class="demo-field"><div class="demo-label">Assist 2</div><div class="demo-value">#14 Judy</div></div>
+                        <div class="demo-field"><div class="demo-label">Period</div><div class="demo-value">1st Period</div></div>
+                        <div class="demo-field"><div class="demo-label">Time Remaining</div><div class="demo-value">4:25</div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderGoalLog(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[5].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[5].help}</p>
+                    <div class="demo-goal-log">${REQUIRED_GOAL_TEXT}</div>
+                </div>
+            `;
+        }
+
+        function renderPlayGoal(node) {
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[6].title}</h3>
+                    <p class="demo-step-help">${DEMO_STEPS[6].help}</p>
+                    <div class="demo-replay">
+                        <div id="replayText" class="demo-replay-text"></div>
+                    </div>
+                </div>
+            `;
+            replayWordIndex = 0;
+            replayWords = REQUIRED_GOAL_TEXT.split(' ');
+        }
+
+        function renderCompletion(node) {
+            const primaryButton = document.getElementById('demoPrimaryButton');
+            if (primaryButton) primaryButton.classList.remove('btn-demo-highlight');
+            node.innerHTML = `
+                <div class="demo-step-card">
+                    <h3 class="demo-step-title">${DEMO_STEPS[7].title}</h3>
+                    <p class="demo-step-help">You're ready for game day.</p>
+                    <div class="demo-actions">
+                        <a href="v2/login.html" class="btn btn-primary">Create Your First Team</a>
+                        <button type="button" class="btn btn-demo-secondary" onclick="closeDemoModal()">Exit Demo</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function typeValue(targetId, text, speed, doneCallback) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            target.textContent = '';
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= text.length) {
+                    clearInterval(interval);
+                    if (doneCallback) doneCallback();
+                    return;
+                }
+                target.textContent += text.charAt(i);
+                i += 1;
+            }, speed);
+            demoTimers.push(interval);
+        }
+
+        function playReplayAnimation() {
+            const replayNode = document.getElementById('replayText');
+            if (!replayNode) return;
+            replayNode.textContent = '';
+            replayWordIndex = 0;
+            const wordTimer = setInterval(() => {
+                if (replayWordIndex >= replayWords.length) {
+                    clearInterval(wordTimer);
+                    return;
+                }
+                replayNode.textContent += (replayWordIndex === 0 ? '' : ' ') + replayWords[replayWordIndex];
+                replayWordIndex += 1;
+            }, 90);
+            demoTimers.push(wordTimer);
+        }
+
+        function handleDemoPrimaryClick() {
+            if (demoStepIndex === 6) {
+                playReplayAnimation();
+                demoStepIndex += 1;
+                scheduleTimer(renderDemo, 1300);
+                return;
+            }
+            if (demoStepIndex >= DEMO_STEPS.length - 1) {
+                window.location.href = 'v2/login.html';
+                return;
+            }
+            demoStepIndex += 1;
+            renderDemo();
         }
 
         document.addEventListener('keydown', (e) => {
