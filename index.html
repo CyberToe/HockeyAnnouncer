@@ -62,6 +62,63 @@
             text-decoration: none;
             white-space: nowrap;
         }
+        .video-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .video-modal.is-open {
+            display: flex;
+        }
+        .video-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            border: none;
+            background: rgba(15, 23, 42, 0.7);
+            cursor: pointer;
+            padding: 0;
+        }
+        .video-modal-panel {
+            position: relative;
+            z-index: 1;
+            width: min(980px, 100%);
+            background: #ffffff;
+            border: 2px solid #94a3b8;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+        }
+        .video-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .video-modal-title {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .video-frame-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #0b1220;
+        }
+        .video-frame-wrap iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
         .home-instruction {
             margin-top: 20px;
             background: #f8fafc;
@@ -235,6 +292,9 @@
             .home-top-right {
                 justify-content: flex-end;
             }
+            .video-modal {
+                padding: 10px;
+            }
             .demo-actions { flex-direction: column; align-items: stretch; }
             .demo-actions .btn { width: 100%; }
         }
@@ -275,9 +335,8 @@
             <div class="home-actions">
                 <button type="button" class="btn home-demo-btn" onclick="restartDemo()">Restart step-by-step demo</button>
                 <a
-                    href="https://www.youtube.com/watch?v=0hOHVlVUnfA"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href="#"
+                    onclick="openVideoModal(); return false;"
                     class="btn btn-primary"
                 >Watch demo video</a>
             </div>
@@ -298,8 +357,26 @@
             </section>
         </section>
     </div>
+    <div id="videoModal" class="video-modal" aria-hidden="true">
+        <button type="button" class="video-modal-backdrop" onclick="closeVideoModal()" aria-label="Close video"></button>
+        <div class="video-modal-panel" role="dialog" aria-modal="true" aria-labelledby="videoModalTitle" onclick="event.stopPropagation()">
+            <div class="video-modal-header">
+                <h3 id="videoModalTitle" class="video-modal-title">Hockey Goal Announcer Demo Video</h3>
+                <button type="button" class="btn btn-demo-secondary" onclick="closeVideoModal()">Close</button>
+            </div>
+            <div class="video-frame-wrap">
+                <iframe
+                    id="demoVideoFrame"
+                    title="Hockey Goal Announcer demo video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                ></iframe>
+            </div>
+        </div>
+    </div>
 
     <script>
+        const DEMO_VIDEO_EMBED_URL = 'https://www.youtube-nocookie.com/embed/0hOHVlVUnfA?autoplay=1&rel=0&modestbranding=1&vq=hd1080';
         const DEMO_STEPS = [
             {
                 phase: 'Pre Game Day',
@@ -616,8 +693,36 @@
             renderDemo();
         }
 
+        function openVideoModal() {
+            const modal = document.getElementById('videoModal');
+            const frame = document.getElementById('demoVideoFrame');
+            if (!modal || !frame) return;
+            frame.src = DEMO_VIDEO_EMBED_URL;
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeVideoModal() {
+            const modal = document.getElementById('videoModal');
+            const frame = document.getElementById('demoVideoFrame');
+            if (!modal || !frame) return;
+            frame.src = '';
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             restartDemo();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            const modal = document.getElementById('videoModal');
+            if (modal && modal.classList.contains('is-open')) {
+                closeVideoModal();
+            }
         });
     </script>
 </body>
